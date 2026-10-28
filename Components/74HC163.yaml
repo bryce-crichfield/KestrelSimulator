@@ -1,0 +1,130 @@
+name: 74HC163
+description: "4-bit synchronous binary counter, synchronous clear and load"
+nodes:
+  - {id: 1, kind: Input, label: "/CLR", pin: 1}
+  - {id: 2, kind: Input, label: "CLK", pin: 2}
+  - {id: 3, kind: Input, label: "A", pin: 3}
+  - {id: 4, kind: Input, label: "B", pin: 4}
+  - {id: 5, kind: Input, label: "C", pin: 5}
+  - {id: 6, kind: Input, label: "D", pin: 6}
+  - {id: 7, kind: Input, label: "ENP", pin: 7}
+  - {id: 8, kind: Input, label: "/LOAD", pin: 9}
+  - {id: 9, kind: Input, label: "ENT", pin: 10}
+  - {id: 10, kind: Output, label: "QD", pin: 11}
+  - {id: 11, kind: Output, label: "QC", pin: 12}
+  - {id: 12, kind: Output, label: "QB", pin: 13}
+  - {id: 13, kind: Output, label: "QA", pin: 14}
+  - {id: 14, kind: Output, label: "RCO", pin: 15}
+  - {id: 15, kind: And}
+  - {id: 16, kind: FlipFlop}
+  - {id: 17, kind: FlipFlop}
+  - {id: 18, kind: FlipFlop}
+  - {id: 19, kind: FlipFlop}
+  - {id: 20, kind: Xor}
+  - {id: 21, kind: And}
+  - {id: 22, kind: Not}
+  - {id: 23, kind: And}
+  - {id: 24, kind: And}
+  - {id: 25, kind: Or}
+  - {id: 26, kind: And}
+  - {id: 27, kind: Xor}
+  - {id: 28, kind: And}
+  - {id: 29, kind: Not}
+  - {id: 30, kind: And}
+  - {id: 31, kind: And}
+  - {id: 32, kind: Or}
+  - {id: 33, kind: And}
+  - {id: 34, kind: Xor}
+  - {id: 35, kind: And}
+  - {id: 36, kind: Not}
+  - {id: 37, kind: And}
+  - {id: 38, kind: And}
+  - {id: 39, kind: Or}
+  - {id: 40, kind: And}
+  - {id: 41, kind: Xor}
+  - {id: 42, kind: And}
+  - {id: 43, kind: Not}
+  - {id: 44, kind: And}
+  - {id: 45, kind: And}
+  - {id: 46, kind: Or}
+  - {id: 47, kind: And}
+  - {id: 48, kind: And}
+  - {id: 49, kind: And}
+  - {id: 50, kind: And}
+  - {id: 51, kind: And}
+wires:
+  - 7 -> 15.A
+  - 9 -> 15.B
+  - 26.Y -> 16.D
+  - 2 -> 16.CLK
+  - 33.Y -> 17.D
+  - 2 -> 17.CLK
+  - 40.Y -> 18.D
+  - 2 -> 18.CLK
+  - 47.Y -> 19.D
+  - 2 -> 19.CLK
+  - 16.Q -> 20.A
+  - 15.Y -> 20.B
+  - 15.Y -> 21.A
+  - 16.Q -> 21.B
+  - 8 -> 22.A
+  - 22.Y -> 23.A
+  - 3 -> 23.B
+  - 8 -> 24.A
+  - 20.Y -> 24.B
+  - 23.Y -> 25.A
+  - 24.Y -> 25.B
+  - 1 -> 26.A
+  - 25.Y -> 26.B
+  - 17.Q -> 27.A
+  - 21.Y -> 27.B
+  - 21.Y -> 28.A
+  - 17.Q -> 28.B
+  - 8 -> 29.A
+  - 29.Y -> 30.A
+  - 4 -> 30.B
+  - 8 -> 31.A
+  - 27.Y -> 31.B
+  - 30.Y -> 32.A
+  - 31.Y -> 32.B
+  - 1 -> 33.A
+  - 32.Y -> 33.B
+  - 18.Q -> 34.A
+  - 28.Y -> 34.B
+  - 28.Y -> 35.A
+  - 18.Q -> 35.B
+  - 8 -> 36.A
+  - 36.Y -> 37.A
+  - 5 -> 37.B
+  - 8 -> 38.A
+  - 34.Y -> 38.B
+  - 37.Y -> 39.A
+  - 38.Y -> 39.B
+  - 1 -> 40.A
+  - 39.Y -> 40.B
+  - 19.Q -> 41.A
+  - 35.Y -> 41.B
+  - 35.Y -> 42.A
+  - 19.Q -> 42.B
+  - 8 -> 43.A
+  - 43.Y -> 44.A
+  - 6 -> 44.B
+  - 8 -> 45.A
+  - 41.Y -> 45.B
+  - 44.Y -> 46.A
+  - 45.Y -> 46.B
+  - 1 -> 47.A
+  - 46.Y -> 47.B
+  - 9 -> 48.A
+  - 16.Q -> 48.B
+  - 48.Y -> 49.A
+  - 17.Q -> 49.B
+  - 49.Y -> 50.A
+  - 18.Q -> 50.B
+  - 50.Y -> 51.A
+  - 19.Q -> 51.B
+  - 19.Q -> 10
+  - 18.Q -> 11
+  - 17.Q -> 12
+  - 16.Q -> 13
+  - 51.Y -> 14

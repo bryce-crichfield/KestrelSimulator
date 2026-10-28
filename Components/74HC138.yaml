@@ -1,0 +1,126 @@
+name: 74HC138
+description: "3-to-8 line decoder, active-low outputs"
+nodes:
+  - {id: 1, kind: Input, label: "A", pin: 1}
+  - {id: 2, kind: Input, label: "B", pin: 2}
+  - {id: 3, kind: Input, label: "C", pin: 3}
+  - {id: 4, kind: Input, label: "/G2A", pin: 4}
+  - {id: 5, kind: Input, label: "/G2B", pin: 5}
+  - {id: 6, kind: Input, label: "G1", pin: 6}
+  - {id: 7, kind: Output, label: "Y7", pin: 7}
+  - {id: 8, kind: Output, label: "Y6", pin: 9}
+  - {id: 9, kind: Output, label: "Y5", pin: 10}
+  - {id: 10, kind: Output, label: "Y4", pin: 11}
+  - {id: 11, kind: Output, label: "Y3", pin: 12}
+  - {id: 12, kind: Output, label: "Y2", pin: 13}
+  - {id: 13, kind: Output, label: "Y1", pin: 14}
+  - {id: 14, kind: Output, label: "Y0", pin: 15}
+  - {id: 15, kind: Nor}
+  - {id: 16, kind: And}
+  - {id: 17, kind: Not}
+  - {id: 18, kind: Not}
+  - {id: 19, kind: Not}
+  - {id: 20, kind: And}
+  - {id: 21, kind: And}
+  - {id: 22, kind: And}
+  - {id: 23, kind: Not}
+  - {id: 24, kind: And}
+  - {id: 25, kind: And}
+  - {id: 26, kind: And}
+  - {id: 27, kind: Not}
+  - {id: 28, kind: And}
+  - {id: 29, kind: And}
+  - {id: 30, kind: And}
+  - {id: 31, kind: Not}
+  - {id: 32, kind: And}
+  - {id: 33, kind: And}
+  - {id: 34, kind: And}
+  - {id: 35, kind: Not}
+  - {id: 36, kind: And}
+  - {id: 37, kind: And}
+  - {id: 38, kind: And}
+  - {id: 39, kind: Not}
+  - {id: 40, kind: And}
+  - {id: 41, kind: And}
+  - {id: 42, kind: And}
+  - {id: 43, kind: Not}
+  - {id: 44, kind: And}
+  - {id: 45, kind: And}
+  - {id: 46, kind: And}
+  - {id: 47, kind: Not}
+  - {id: 48, kind: And}
+  - {id: 49, kind: And}
+  - {id: 50, kind: And}
+  - {id: 51, kind: Not}
+wires:
+  - 4 -> 15.A
+  - 5 -> 15.B
+  - 6 -> 16.A
+  - 15.Y -> 16.B
+  - 1 -> 17.A
+  - 2 -> 18.A
+  - 3 -> 19.A
+  - 16.Y -> 20.A
+  - 17.Y -> 20.B
+  - 20.Y -> 21.A
+  - 18.Y -> 21.B
+  - 21.Y -> 22.A
+  - 19.Y -> 22.B
+  - 22.Y -> 23.A
+  - 16.Y -> 24.A
+  - 1 -> 24.B
+  - 24.Y -> 25.A
+  - 18.Y -> 25.B
+  - 25.Y -> 26.A
+  - 19.Y -> 26.B
+  - 26.Y -> 27.A
+  - 16.Y -> 28.A
+  - 17.Y -> 28.B
+  - 28.Y -> 29.A
+  - 2 -> 29.B
+  - 29.Y -> 30.A
+  - 19.Y -> 30.B
+  - 30.Y -> 31.A
+  - 16.Y -> 32.A
+  - 1 -> 32.B
+  - 32.Y -> 33.A
+  - 2 -> 33.B
+  - 33.Y -> 34.A
+  - 19.Y -> 34.B
+  - 34.Y -> 35.A
+  - 16.Y -> 36.A
+  - 17.Y -> 36.B
+  - 36.Y -> 37.A
+  - 18.Y -> 37.B
+  - 37.Y -> 38.A
+  - 3 -> 38.B
+  - 38.Y -> 39.A
+  - 16.Y -> 40.A
+  - 1 -> 40.B
+  - 40.Y -> 41.A
+  - 18.Y -> 41.B
+  - 41.Y -> 42.A
+  - 3 -> 42.B
+  - 42.Y -> 43.A
+  - 16.Y -> 44.A
+  - 17.Y -> 44.B
+  - 44.Y -> 45.A
+  - 2 -> 45.B
+  - 45.Y -> 46.A
+  - 3 -> 46.B
+  - 46.Y -> 47.A
+  - 16.Y -> 48.A
+  - 1 -> 48.B
+  - 48.Y -> 49.A
+  - 2 -> 49.B
+  - 49.Y -> 50.A
+  - 3 -> 50.B
+  - 50.Y -> 51.A
+  - 51.Y -> 7
+  - 47.Y -> 8
+  - 43.Y -> 9
+  - 39.Y -> 10
+  - 35.Y -> 11
+  - 31.Y -> 12
+  - 27.Y -> 13
+  - 23.Y -> 14

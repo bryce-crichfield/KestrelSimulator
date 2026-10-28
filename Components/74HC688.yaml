@@ -1,0 +1,75 @@
+name: 74HC688
+description: "8-bit identity comparator: /PEQ is 0 when P = Q and /G is 0"
+nodes:
+  - {id: 1, kind: Input, label: "/G", pin: 1}
+  - {id: 2, kind: Input, label: "P0", pin: 2}
+  - {id: 3, kind: Input, label: "Q0", pin: 3}
+  - {id: 4, kind: Input, label: "P1", pin: 4}
+  - {id: 5, kind: Input, label: "Q1", pin: 5}
+  - {id: 6, kind: Input, label: "P2", pin: 6}
+  - {id: 7, kind: Input, label: "Q2", pin: 7}
+  - {id: 8, kind: Input, label: "P3", pin: 8}
+  - {id: 9, kind: Input, label: "Q3", pin: 9}
+  - {id: 10, kind: Input, label: "P4", pin: 11}
+  - {id: 11, kind: Input, label: "Q4", pin: 12}
+  - {id: 12, kind: Input, label: "P5", pin: 13}
+  - {id: 13, kind: Input, label: "Q5", pin: 14}
+  - {id: 14, kind: Input, label: "P6", pin: 15}
+  - {id: 15, kind: Input, label: "Q6", pin: 16}
+  - {id: 16, kind: Input, label: "P7", pin: 17}
+  - {id: 17, kind: Input, label: "Q7", pin: 18}
+  - {id: 18, kind: Output, label: "/PEQ", pin: 19}
+  - {id: 19, kind: Not}
+  - {id: 20, kind: Xnor}
+  - {id: 21, kind: Xnor}
+  - {id: 22, kind: Xnor}
+  - {id: 23, kind: Xnor}
+  - {id: 24, kind: Xnor}
+  - {id: 25, kind: Xnor}
+  - {id: 26, kind: Xnor}
+  - {id: 27, kind: Xnor}
+  - {id: 28, kind: And}
+  - {id: 29, kind: And}
+  - {id: 30, kind: And}
+  - {id: 31, kind: And}
+  - {id: 32, kind: And}
+  - {id: 33, kind: And}
+  - {id: 34, kind: And}
+  - {id: 35, kind: And}
+  - {id: 36, kind: Not}
+wires:
+  - 1 -> 19.A
+  - 2 -> 20.A
+  - 3 -> 20.B
+  - 4 -> 21.A
+  - 5 -> 21.B
+  - 6 -> 22.A
+  - 7 -> 22.B
+  - 8 -> 23.A
+  - 9 -> 23.B
+  - 10 -> 24.A
+  - 11 -> 24.B
+  - 12 -> 25.A
+  - 13 -> 25.B
+  - 14 -> 26.A
+  - 15 -> 26.B
+  - 16 -> 27.A
+  - 17 -> 27.B
+  - 19.Y -> 28.A
+  - 20.Y -> 28.B
+  - 28.Y -> 29.A
+  - 21.Y -> 29.B
+  - 29.Y -> 30.A
+  - 22.Y -> 30.B
+  - 30.Y -> 31.A
+  - 23.Y -> 31.B
+  - 31.Y -> 32.A
+  - 24.Y -> 32.B
+  - 32.Y -> 33.A
+  - 25.Y -> 33.B
+  - 33.Y -> 34.A
+  - 26.Y -> 34.B
+  - 34.Y -> 35.A
+  - 27.Y -> 35.B
+  - 35.Y -> 36.A
+  - 36.Y -> 18

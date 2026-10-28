@@ -1,0 +1,107 @@
+name: 74HC173
+description: "4-bit D register with asynchronous clear and 3-state outputs"
+nodes:
+  - {id: 1, kind: Input, label: "M", pin: 1}
+  - {id: 2, kind: Input, label: "N", pin: 2}
+  - {id: 3, kind: Input, label: "CLK", pin: 7}
+  - {id: 4, kind: Input, label: "G1", pin: 9}
+  - {id: 5, kind: Input, label: "G2", pin: 10}
+  - {id: 6, kind: Input, label: "4D", pin: 11}
+  - {id: 7, kind: Input, label: "3D", pin: 12}
+  - {id: 8, kind: Input, label: "2D", pin: 13}
+  - {id: 9, kind: Input, label: "1D", pin: 14}
+  - {id: 10, kind: Input, label: "CLR", pin: 15}
+  - {id: 11, kind: Output, label: "1Q", pin: 3}
+  - {id: 12, kind: Output, label: "2Q", pin: 4}
+  - {id: 13, kind: Output, label: "3Q", pin: 5}
+  - {id: 14, kind: Output, label: "4Q", pin: 6}
+  - {id: 15, kind: Nor}
+  - {id: 16, kind: Not}
+  - {id: 17, kind: Or}
+  - {id: 18, kind: FlipFlopSR}
+  - {id: 19, kind: Not}
+  - {id: 20, kind: And}
+  - {id: 21, kind: And}
+  - {id: 22, kind: Or}
+  - {id: 23, kind: TriState}
+  - {id: 24, kind: FlipFlopSR}
+  - {id: 25, kind: Not}
+  - {id: 26, kind: And}
+  - {id: 27, kind: And}
+  - {id: 28, kind: Or}
+  - {id: 29, kind: TriState}
+  - {id: 30, kind: FlipFlopSR}
+  - {id: 31, kind: Not}
+  - {id: 32, kind: And}
+  - {id: 33, kind: And}
+  - {id: 34, kind: Or}
+  - {id: 35, kind: TriState}
+  - {id: 36, kind: FlipFlopSR}
+  - {id: 37, kind: Not}
+  - {id: 38, kind: And}
+  - {id: 39, kind: And}
+  - {id: 40, kind: Or}
+  - {id: 41, kind: TriState}
+  - {id: 42, kind: High}
+wires:
+  - 4 -> 15.A
+  - 5 -> 15.B
+  - 10 -> 16.A
+  - 1 -> 17.A
+  - 2 -> 17.B
+  - 22.Y -> 18.D
+  - 3 -> 18.CLK
+  - 42 -> 18./S
+  - 16.Y -> 18./R
+  - 15.Y -> 19.A
+  - 19.Y -> 20.A
+  - 18.Q -> 20.B
+  - 15.Y -> 21.A
+  - 9 -> 21.B
+  - 20.Y -> 22.A
+  - 21.Y -> 22.B
+  - 18.Q -> 23.A
+  - 17.Y -> 23./OE
+  - 28.Y -> 24.D
+  - 3 -> 24.CLK
+  - 42 -> 24./S
+  - 16.Y -> 24./R
+  - 15.Y -> 25.A
+  - 25.Y -> 26.A
+  - 24.Q -> 26.B
+  - 15.Y -> 27.A
+  - 8 -> 27.B
+  - 26.Y -> 28.A
+  - 27.Y -> 28.B
+  - 24.Q -> 29.A
+  - 17.Y -> 29./OE
+  - 34.Y -> 30.D
+  - 3 -> 30.CLK
+  - 42 -> 30./S
+  - 16.Y -> 30./R
+  - 15.Y -> 31.A
+  - 31.Y -> 32.A
+  - 30.Q -> 32.B
+  - 15.Y -> 33.A
+  - 7 -> 33.B
+  - 32.Y -> 34.A
+  - 33.Y -> 34.B
+  - 30.Q -> 35.A
+  - 17.Y -> 35./OE
+  - 40.Y -> 36.D
+  - 3 -> 36.CLK
+  - 42 -> 36./S
+  - 16.Y -> 36./R
+  - 15.Y -> 37.A
+  - 37.Y -> 38.A
+  - 36.Q -> 38.B
+  - 15.Y -> 39.A
+  - 6 -> 39.B
+  - 38.Y -> 40.A
+  - 39.Y -> 40.B
+  - 36.Q -> 41.A
+  - 17.Y -> 41./OE
+  - 23.Y -> 11
+  - 29.Y -> 12
+  - 35.Y -> 13
+  - 41.Y -> 14

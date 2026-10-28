@@ -1,0 +1,142 @@
+name: 74HC377
+description: "Octal D flip-flop with enable"
+nodes:
+  - {id: 1, kind: Input, label: "/G", pin: 1}
+  - {id: 2, kind: Input, label: "1D", pin: 3}
+  - {id: 3, kind: Input, label: "2D", pin: 4}
+  - {id: 4, kind: Input, label: "3D", pin: 7}
+  - {id: 5, kind: Input, label: "4D", pin: 8}
+  - {id: 6, kind: Input, label: "CLK", pin: 11}
+  - {id: 7, kind: Input, label: "5D", pin: 13}
+  - {id: 8, kind: Input, label: "6D", pin: 14}
+  - {id: 9, kind: Input, label: "7D", pin: 17}
+  - {id: 10, kind: Input, label: "8D", pin: 18}
+  - {id: 11, kind: Output, label: "1Q", pin: 2}
+  - {id: 12, kind: Output, label: "2Q", pin: 5}
+  - {id: 13, kind: Output, label: "3Q", pin: 6}
+  - {id: 14, kind: Output, label: "4Q", pin: 9}
+  - {id: 15, kind: Output, label: "5Q", pin: 12}
+  - {id: 16, kind: Output, label: "6Q", pin: 15}
+  - {id: 17, kind: Output, label: "7Q", pin: 16}
+  - {id: 18, kind: Output, label: "8Q", pin: 19}
+  - {id: 19, kind: FlipFlop}
+  - {id: 20, kind: Not}
+  - {id: 21, kind: And}
+  - {id: 22, kind: And}
+  - {id: 23, kind: Or}
+  - {id: 24, kind: FlipFlop}
+  - {id: 25, kind: Not}
+  - {id: 26, kind: And}
+  - {id: 27, kind: And}
+  - {id: 28, kind: Or}
+  - {id: 29, kind: FlipFlop}
+  - {id: 30, kind: Not}
+  - {id: 31, kind: And}
+  - {id: 32, kind: And}
+  - {id: 33, kind: Or}
+  - {id: 34, kind: FlipFlop}
+  - {id: 35, kind: Not}
+  - {id: 36, kind: And}
+  - {id: 37, kind: And}
+  - {id: 38, kind: Or}
+  - {id: 39, kind: FlipFlop}
+  - {id: 40, kind: Not}
+  - {id: 41, kind: And}
+  - {id: 42, kind: And}
+  - {id: 43, kind: Or}
+  - {id: 44, kind: FlipFlop}
+  - {id: 45, kind: Not}
+  - {id: 46, kind: And}
+  - {id: 47, kind: And}
+  - {id: 48, kind: Or}
+  - {id: 49, kind: FlipFlop}
+  - {id: 50, kind: Not}
+  - {id: 51, kind: And}
+  - {id: 52, kind: And}
+  - {id: 53, kind: Or}
+  - {id: 54, kind: FlipFlop}
+  - {id: 55, kind: Not}
+  - {id: 56, kind: And}
+  - {id: 57, kind: And}
+  - {id: 58, kind: Or}
+wires:
+  - 23.Y -> 19.D
+  - 6 -> 19.CLK
+  - 1 -> 20.A
+  - 20.Y -> 21.A
+  - 2 -> 21.B
+  - 1 -> 22.A
+  - 19.Q -> 22.B
+  - 21.Y -> 23.A
+  - 22.Y -> 23.B
+  - 28.Y -> 24.D
+  - 6 -> 24.CLK
+  - 1 -> 25.A
+  - 25.Y -> 26.A
+  - 3 -> 26.B
+  - 1 -> 27.A
+  - 24.Q -> 27.B
+  - 26.Y -> 28.A
+  - 27.Y -> 28.B
+  - 33.Y -> 29.D
+  - 6 -> 29.CLK
+  - 1 -> 30.A
+  - 30.Y -> 31.A
+  - 4 -> 31.B
+  - 1 -> 32.A
+  - 29.Q -> 32.B
+  - 31.Y -> 33.A
+  - 32.Y -> 33.B
+  - 38.Y -> 34.D
+  - 6 -> 34.CLK
+  - 1 -> 35.A
+  - 35.Y -> 36.A
+  - 5 -> 36.B
+  - 1 -> 37.A
+  - 34.Q -> 37.B
+  - 36.Y -> 38.A
+  - 37.Y -> 38.B
+  - 43.Y -> 39.D
+  - 6 -> 39.CLK
+  - 1 -> 40.A
+  - 40.Y -> 41.A
+  - 7 -> 41.B
+  - 1 -> 42.A
+  - 39.Q -> 42.B
+  - 41.Y -> 43.A
+  - 42.Y -> 43.B
+  - 48.Y -> 44.D
+  - 6 -> 44.CLK
+  - 1 -> 45.A
+  - 45.Y -> 46.A
+  - 8 -> 46.B
+  - 1 -> 47.A
+  - 44.Q -> 47.B
+  - 46.Y -> 48.A
+  - 47.Y -> 48.B
+  - 53.Y -> 49.D
+  - 6 -> 49.CLK
+  - 1 -> 50.A
+  - 50.Y -> 51.A
+  - 9 -> 51.B
+  - 1 -> 52.A
+  - 49.Q -> 52.B
+  - 51.Y -> 53.A
+  - 52.Y -> 53.B
+  - 58.Y -> 54.D
+  - 6 -> 54.CLK
+  - 1 -> 55.A
+  - 55.Y -> 56.A
+  - 10 -> 56.B
+  - 1 -> 57.A
+  - 54.Q -> 57.B
+  - 56.Y -> 58.A
+  - 57.Y -> 58.B
+  - 19.Q -> 11
+  - 24.Q -> 12
+  - 29.Q -> 13
+  - 34.Q -> 14
+  - 39.Q -> 15
+  - 44.Q -> 16
+  - 49.Q -> 17
+  - 54.Q -> 18

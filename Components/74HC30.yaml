@@ -1,0 +1,37 @@
+name: 74HC30
+description: "8-input NAND"
+nodes:
+  - {id: 1, kind: Input, label: "A", pin: 1}
+  - {id: 2, kind: Input, label: "B", pin: 2}
+  - {id: 3, kind: Input, label: "C", pin: 3}
+  - {id: 4, kind: Input, label: "D", pin: 4}
+  - {id: 5, kind: Input, label: "E", pin: 5}
+  - {id: 6, kind: Input, label: "F", pin: 6}
+  - {id: 7, kind: Input, label: "G", pin: 11}
+  - {id: 8, kind: Input, label: "H", pin: 12}
+  - {id: 9, kind: Output, label: "Y", pin: 8}
+  - {id: 10, kind: And}
+  - {id: 11, kind: And}
+  - {id: 12, kind: And}
+  - {id: 13, kind: And}
+  - {id: 14, kind: And}
+  - {id: 15, kind: And}
+  - {id: 16, kind: And}
+  - {id: 17, kind: Not}
+wires:
+  - 1 -> 10.A
+  - 2 -> 10.B
+  - 10.Y -> 11.A
+  - 3 -> 11.B
+  - 11.Y -> 12.A
+  - 4 -> 12.B
+  - 12.Y -> 13.A
+  - 5 -> 13.B
+  - 13.Y -> 14.A
+  - 6 -> 14.B
+  - 14.Y -> 15.A
+  - 7 -> 15.B
+  - 15.Y -> 16.A
+  - 8 -> 16.B
+  - 16.Y -> 17.A
+  - 17.Y -> 9

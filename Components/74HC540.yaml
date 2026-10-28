@@ -1,0 +1,73 @@
+name: 74HC540
+description: "Octal 3-state buffer, inverting"
+nodes:
+  - {id: 1, kind: Input, label: "/G1", pin: 1}
+  - {id: 2, kind: Input, label: "A1", pin: 2}
+  - {id: 3, kind: Input, label: "A2", pin: 3}
+  - {id: 4, kind: Input, label: "A3", pin: 4}
+  - {id: 5, kind: Input, label: "A4", pin: 5}
+  - {id: 6, kind: Input, label: "A5", pin: 6}
+  - {id: 7, kind: Input, label: "A6", pin: 7}
+  - {id: 8, kind: Input, label: "A7", pin: 8}
+  - {id: 9, kind: Input, label: "A8", pin: 9}
+  - {id: 10, kind: Input, label: "/G2", pin: 19}
+  - {id: 11, kind: Output, label: "Y8", pin: 11}
+  - {id: 12, kind: Output, label: "Y7", pin: 12}
+  - {id: 13, kind: Output, label: "Y6", pin: 13}
+  - {id: 14, kind: Output, label: "Y5", pin: 14}
+  - {id: 15, kind: Output, label: "Y4", pin: 15}
+  - {id: 16, kind: Output, label: "Y3", pin: 16}
+  - {id: 17, kind: Output, label: "Y2", pin: 17}
+  - {id: 18, kind: Output, label: "Y1", pin: 18}
+  - {id: 19, kind: Or}
+  - {id: 20, kind: Not}
+  - {id: 21, kind: TriState}
+  - {id: 22, kind: Not}
+  - {id: 23, kind: TriState}
+  - {id: 24, kind: Not}
+  - {id: 25, kind: TriState}
+  - {id: 26, kind: Not}
+  - {id: 27, kind: TriState}
+  - {id: 28, kind: Not}
+  - {id: 29, kind: TriState}
+  - {id: 30, kind: Not}
+  - {id: 31, kind: TriState}
+  - {id: 32, kind: Not}
+  - {id: 33, kind: TriState}
+  - {id: 34, kind: Not}
+  - {id: 35, kind: TriState}
+wires:
+  - 1 -> 19.A
+  - 10 -> 19.B
+  - 2 -> 20.A
+  - 20.Y -> 21.A
+  - 19.Y -> 21./OE
+  - 3 -> 22.A
+  - 22.Y -> 23.A
+  - 19.Y -> 23./OE
+  - 4 -> 24.A
+  - 24.Y -> 25.A
+  - 19.Y -> 25./OE
+  - 5 -> 26.A
+  - 26.Y -> 27.A
+  - 19.Y -> 27./OE
+  - 6 -> 28.A
+  - 28.Y -> 29.A
+  - 19.Y -> 29./OE
+  - 7 -> 30.A
+  - 30.Y -> 31.A
+  - 19.Y -> 31./OE
+  - 8 -> 32.A
+  - 32.Y -> 33.A
+  - 19.Y -> 33./OE
+  - 9 -> 34.A
+  - 34.Y -> 35.A
+  - 19.Y -> 35./OE
+  - 35.Y -> 11
+  - 33.Y -> 12
+  - 31.Y -> 13
+  - 29.Y -> 14
+  - 27.Y -> 15
+  - 25.Y -> 16
+  - 23.Y -> 17
+  - 21.Y -> 18

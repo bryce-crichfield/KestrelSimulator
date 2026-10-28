@@ -1,0 +1,83 @@
+name: 74HC283
+description: "4-bit binary full adder"
+nodes:
+  - {id: 1, kind: Input, label: "B2", pin: 2}
+  - {id: 2, kind: Input, label: "A2", pin: 3}
+  - {id: 3, kind: Input, label: "A1", pin: 5}
+  - {id: 4, kind: Input, label: "B1", pin: 6}
+  - {id: 5, kind: Input, label: "C0", pin: 7}
+  - {id: 6, kind: Input, label: "B4", pin: 11}
+  - {id: 7, kind: Input, label: "A4", pin: 12}
+  - {id: 8, kind: Input, label: "A3", pin: 14}
+  - {id: 9, kind: Input, label: "B3", pin: 15}
+  - {id: 10, kind: Output, label: "S2", pin: 1}
+  - {id: 11, kind: Output, label: "S1", pin: 4}
+  - {id: 12, kind: Output, label: "C4", pin: 9}
+  - {id: 13, kind: Output, label: "S4", pin: 10}
+  - {id: 14, kind: Output, label: "S3", pin: 13}
+  - {id: 15, kind: Xor}
+  - {id: 16, kind: Xor}
+  - {id: 17, kind: And}
+  - {id: 18, kind: And}
+  - {id: 19, kind: Or}
+  - {id: 20, kind: Xor}
+  - {id: 21, kind: Xor}
+  - {id: 22, kind: And}
+  - {id: 23, kind: And}
+  - {id: 24, kind: Or}
+  - {id: 25, kind: Xor}
+  - {id: 26, kind: Xor}
+  - {id: 27, kind: And}
+  - {id: 28, kind: And}
+  - {id: 29, kind: Or}
+  - {id: 30, kind: Xor}
+  - {id: 31, kind: Xor}
+  - {id: 32, kind: And}
+  - {id: 33, kind: And}
+  - {id: 34, kind: Or}
+wires:
+  - 3 -> 15.A
+  - 4 -> 15.B
+  - 15.Y -> 16.A
+  - 5 -> 16.B
+  - 3 -> 17.A
+  - 4 -> 17.B
+  - 5 -> 18.A
+  - 15.Y -> 18.B
+  - 17.Y -> 19.A
+  - 18.Y -> 19.B
+  - 2 -> 20.A
+  - 1 -> 20.B
+  - 20.Y -> 21.A
+  - 19.Y -> 21.B
+  - 2 -> 22.A
+  - 1 -> 22.B
+  - 19.Y -> 23.A
+  - 20.Y -> 23.B
+  - 22.Y -> 24.A
+  - 23.Y -> 24.B
+  - 8 -> 25.A
+  - 9 -> 25.B
+  - 25.Y -> 26.A
+  - 24.Y -> 26.B
+  - 8 -> 27.A
+  - 9 -> 27.B
+  - 24.Y -> 28.A
+  - 25.Y -> 28.B
+  - 27.Y -> 29.A
+  - 28.Y -> 29.B
+  - 7 -> 30.A
+  - 6 -> 30.B
+  - 30.Y -> 31.A
+  - 29.Y -> 31.B
+  - 7 -> 32.A
+  - 6 -> 32.B
+  - 29.Y -> 33.A
+  - 30.Y -> 33.B
+  - 32.Y -> 34.A
+  - 33.Y -> 34.B
+  - 21.Y -> 10
+  - 16.Y -> 11
+  - 34.Y -> 12
+  - 31.Y -> 13
+  - 26.Y -> 14
