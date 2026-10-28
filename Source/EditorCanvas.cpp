@@ -138,21 +138,16 @@ static bool CanPlace(const Component& component) {
 // ---------------------------------------------------------------------------
 // Colors
 
-static const ImU32 ColorHigh = IM_COL32(90, 230, 110, 255);
-static const ImU32 ColorLow = IM_COL32(70, 95, 80, 255);
-static const ImU32 ColorFloating = IM_COL32(90, 110, 170, 255);
-static const ImU32 ColorConflict = IM_COL32(255, 60, 60, 255);
-
 ImU32 LevelColor(uint8_t level) {
     switch (level) {
         case High:
-            return ColorHigh;
+            return Theme::LEVEL_HIGH_COLOR;
         case Floating:
-            return ColorFloating;
+            return Theme::LEVEL_FLOATING_COLOR;
         case Conflict:
-            return ColorConflict;
+            return Theme::LEVEL_CONFLICT_COLOR;
         default:
-            return ColorLow;
+            return Theme::LEVEL_LOW_COLOR;
     }
 }
 
@@ -164,26 +159,19 @@ const char* LevelText(uint8_t level) {
 static ImU32 TitleColor(const Node& node) {
     switch (node.kind) {
         case NodeKind::Input:
-            return IM_COL32(40, 120, 70, 255);
+            return Theme::TITLE_INPUT_COLOR;
         case NodeKind::Output:
-            return IM_COL32(150, 60, 50, 255);
+            return Theme::TITLE_OUTPUT_COLOR;
         case NodeKind::Component:
-            return FindComponent(node.typeName) ? IM_COL32(50, 85, 150, 255) : IM_COL32(170, 40, 40, 255);
+            return FindComponent(node.typeName) ? Theme::TITLE_COMPONENT_COLOR : Theme::TITLE_MISSING_COLOR;
         case NodeKind::Clock:
-            return IM_COL32(150, 110, 30, 255);
+            return Theme::TITLE_CLOCK_COLOR;
         case NodeKind::FlipFlop:
         case NodeKind::FlipFlopSR:
-            return IM_COL32(110, 70, 140, 255);
+            return Theme::TITLE_FLIP_FLOP_COLOR;
         default:
-            return IM_COL32(75, 75, 85, 255);
+            return Theme::TITLE_GATE_COLOR;
     }
-}
-
-static ImU32 Lighten(ImU32 color, int amount) {
-    int r = std::min(255, static_cast<int>((color >> IM_COL32_R_SHIFT) & 0xFF) + amount);
-    int g = std::min(255, static_cast<int>((color >> IM_COL32_G_SHIFT) & 0xFF) + amount);
-    int b = std::min(255, static_cast<int>((color >> IM_COL32_B_SHIFT) & 0xFF) + amount);
-    return IM_COL32(r, g, b, 255);
 }
 
 // ---------------------------------------------------------------------------
@@ -195,9 +183,9 @@ void DrawLed(bool on) {
     ImGui::Dummy(ImVec2(radius * 2, radius * 2));
     ImVec2 center(corner.x + radius, corner.y + radius);
     ImDrawList* drawList = ImGui::GetWindowDrawList();
-    drawList->AddCircleFilled(center, radius, on ? IM_COL32(255, 70, 50, 255) : IM_COL32(70, 25, 25, 255));
+    drawList->AddCircleFilled(center, radius, on ? Theme::LED_ON_COLOR : Theme::LED_OFF_COLOR);
     if (on) {
-        drawList->AddCircle(center, radius + 2, IM_COL32(255, 120, 90, 120), 0, 2.0f);
+        drawList->AddCircle(center, radius + Theme::LED_GLOW_THICKNESS, Theme::LED_GLOW_COLOR, 0, Theme::LED_GLOW_THICKNESS);
     }
 }
 
@@ -218,8 +206,8 @@ static void DrawNode(Node& node) {
 
     ImU32 title = TitleColor(node);
     ImNodes::PushColorStyle(ImNodesCol_TitleBar, title);
-    ImNodes::PushColorStyle(ImNodesCol_TitleBarHovered, Lighten(title, 25));
-    ImNodes::PushColorStyle(ImNodesCol_TitleBarSelected, Lighten(title, 45));
+    ImNodes::PushColorStyle(ImNodesCol_TitleBarHovered, Theme::Lighten(title, Theme::TITLE_HOVER_LIGHTEN));
+    ImNodes::PushColorStyle(ImNodesCol_TitleBarSelected, Theme::Lighten(title, Theme::TITLE_SELECTED_LIGHTEN));
 
     ImNodes::BeginNode(static_cast<int>(node.id));
 
@@ -253,7 +241,7 @@ static void DrawNode(Node& node) {
     if (simulating && node.kind == NodeKind::Input && node.width == 1) {
         uint32_t value = SwitchValue(simulation, node.id);
         ImGui::PushID(static_cast<int>(node.id));
-        ImGui::PushStyleColor(ImGuiCol_Button, value ? ColorHigh : ColorLow);
+        ImGui::PushStyleColor(ImGuiCol_Button, value ? Theme::LEVEL_HIGH_COLOR : Theme::LEVEL_LOW_COLOR);
         if (ImGui::Button(value ? " 1 " : " 0 ")) {
             SetSwitch(simulation, node.id, !value);
         }
@@ -412,14 +400,14 @@ void DrawAddNodeMenu(ImVec2 screenPosition, bool atCenter) {
         }
     };
 
-    ImGui::SeparatorText("Pins");
+    Theme::SectionTitle("Pins");
     for (NodeKind kind : {NodeKind::Input, NodeKind::Output}) {
         if (ImGui::MenuItem(Primitives[static_cast<int>(kind)].name)) {
             place(kind, "");
         }
         ImGui::SetItemTooltip("%s", Primitives[static_cast<int>(kind)].description);
     }
-    ImGui::SeparatorText("Gates");
+    Theme::SectionTitle("Gates");
     for (NodeKind kind : {NodeKind::Not, NodeKind::And, NodeKind::Or, NodeKind::Nand, NodeKind::Nor, NodeKind::Xor,
                           NodeKind::Xnor, NodeKind::Buffer, NodeKind::TriState}) {
         if (ImGui::MenuItem(Primitives[static_cast<int>(kind)].name)) {
@@ -427,7 +415,7 @@ void DrawAddNodeMenu(ImVec2 screenPosition, bool atCenter) {
         }
         ImGui::SetItemTooltip("%s", Primitives[static_cast<int>(kind)].description);
     }
-    ImGui::SeparatorText("Memory and timing");
+    Theme::SectionTitle("Memory and timing");
     for (NodeKind kind : {NodeKind::FlipFlop, NodeKind::FlipFlopSR, NodeKind::Rom, NodeKind::Ram, NodeKind::Clock, NodeKind::Low,
                           NodeKind::High}) {
         if (ImGui::MenuItem(Primitives[static_cast<int>(kind)].name)) {
@@ -435,12 +423,12 @@ void DrawAddNodeMenu(ImVec2 screenPosition, bool atCenter) {
         }
         ImGui::SetItemTooltip("%s", Primitives[static_cast<int>(kind)].description);
     }
-    ImGui::SeparatorText("Input/output");
+    Theme::SectionTitle("Input/output");
     if (ImGui::MenuItem(Primitives[static_cast<int>(NodeKind::Terminal)].name)) {
         place(NodeKind::Terminal, "");
     }
     ImGui::SetItemTooltip("%s", Primitives[static_cast<int>(NodeKind::Terminal)].description);
-    ImGui::SeparatorText("Components");
+    Theme::SectionTitle("Components");
     bool any = false;
     for (auto& component : library) {
         if (component.get() == app.current) {
@@ -552,8 +540,8 @@ void DrawCanvas(ImVec2 position, ImVec2 size) {
     float zoom = component.zoom;
     ScaleNodeStyle(zoom);
     ImGui::PushFont(nullptr, ImGui::GetStyle().FontSizeBase * zoom);
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8 * zoom, 4 * zoom));
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4 * zoom, 3 * zoom));
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(Theme::CANVAS_ITEM_SPACING.x * zoom, Theme::CANVAS_ITEM_SPACING.y * zoom));
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(Theme::CANVAS_FRAME_PADDING.x * zoom, Theme::CANVAS_FRAME_PADDING.y * zoom));
 
     ImNodes::BeginNodeEditor();
     FindSingleWirePins(component);
@@ -572,11 +560,11 @@ void DrawCanvas(ImVec2 position, ImVec2 size) {
             ImU32 color = LevelColor(BusLevel(simulation, PinNets(simulation, wire.fromNode, true,
                                                                   static_cast<int>(wire.fromPin), width)));
             ImNodes::PushColorStyle(ImNodesCol_Link, color);
-            ImNodes::PushColorStyle(ImNodesCol_LinkHovered, Lighten(color, 30));
-            ImNodes::PushColorStyle(ImNodesCol_LinkSelected, Lighten(color, 30));
+            ImNodes::PushColorStyle(ImNodesCol_LinkHovered, Theme::Lighten(color, Theme::WIRE_HOVER_LIGHTEN));
+            ImNodes::PushColorStyle(ImNodesCol_LinkSelected, Theme::Lighten(color, Theme::WIRE_HOVER_LIGHTEN));
         }
         if (width > 1) {
-            ImNodes::PushStyleVar(ImNodesStyleVar_LinkThickness, ImNodes::GetStyle().LinkThickness * 2.5f);
+            ImNodes::PushStyleVar(ImNodesStyleVar_LinkThickness, ImNodes::GetStyle().LinkThickness * Theme::BUS_THICKNESS_SCALE);
         }
         ImNodes::Link(static_cast<int>(wire.id), WireEndAttribute(component, *from, true, static_cast<int>(wire.fromPin), width),
                       WireEndAttribute(component, *to, false, static_cast<int>(wire.toPin), width));

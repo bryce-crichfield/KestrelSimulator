@@ -11,6 +11,8 @@
 
 namespace Kestrel {
 
+static const char* const BrowseLabel = ICON_FA_FOLDER_OPEN "  Browse...";
+
 static std::string SchematicPath() {
     std::string schematic = Trim(app.importSchematic);
     if (schematic.size() > 1 && schematic.front() == '"' && schematic.back() == '"') {
@@ -77,7 +79,7 @@ static void DrawNetPickers() {
         return;
     }
     if (!app.importInputsError.empty()) {
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 0.45f, 0.4f, 1));
+        ImGui::PushStyleColor(ImGuiCol_Text, Theme::Vec(Theme::ERROR_COLOR));
         ImGui::TextWrapped("%s", app.importInputsError.c_str());
         ImGui::PopStyleColor();
         return;
@@ -170,12 +172,12 @@ void DrawImportDialog() {
 
     // The schematic: typed or pasted, or chosen with Browse. Its nets are read once it's chosen.
     const ImGuiStyle& style = ImGui::GetStyle();
-    float browseWidth = ImGui::CalcTextSize("Browse...").x + style.FramePadding.x * 2;
+    float browseWidth = ImGui::CalcTextSize(BrowseLabel).x + style.FramePadding.x * 2;
     ImGui::SetNextItemWidth(ImGui::CalcItemWidth() - browseWidth - style.ItemInnerSpacing.x);
     ImGui::InputTextWithHint("##schematic", "the top-level .kicad_sch (or a .net)", app.importSchematic, sizeof app.importSchematic);
     bool chosen = ImGui::IsItemDeactivatedAfterEdit();
     ImGui::SameLine(0, style.ItemInnerSpacing.x);
-    if (ImGui::Button("Browse...")) {
+    if (ImGui::Button(BrowseLabel)) {
         std::string path = OpenFileDialog("Import a KiCad schematic",
                                           "KiCad schematic (*.kicad_sch, *.net)|*.kicad_sch;*.net|All files|*.*", SchematicPath());
         if (!path.empty()) {
@@ -193,18 +195,18 @@ void DrawImportDialog() {
     DrawNetPickers();
 
     ImGui::BeginDisabled(SchematicPath().empty());
-    if (ImGui::Button("Import")) {
+    if (ImGui::Button(ICON_FA_FILE_IMPORT "  Import")) {
         RunImport();
     }
     ImGui::EndDisabled();
     ImGui::SameLine();
-    if (ImGui::Button("Close")) {
+    if (ImGui::Button(ICON_FA_XMARK "  Close")) {
         ImGui::CloseCurrentPopup();
     }
 
     if (!app.importError.empty()) {
         ImGui::Separator();
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 0.45f, 0.4f, 1));
+        ImGui::PushStyleColor(ImGuiCol_Text, Theme::Vec(Theme::ERROR_COLOR));
         ImGui::TextWrapped("%s", app.importError.c_str());
         ImGui::PopStyleColor();
     }
@@ -225,7 +227,7 @@ void DrawImportDialog() {
                 anyMemory = true;
             }
             ImGui::PushID(static_cast<int>(node.id));
-            if (ImGui::SmallButton("Contents...")) {
+            if (ImGui::SmallButton(ICON_FA_TABLE_CELLS " Contents...")) {
                 OpenRomEditor(node.id);
                 ImGui::CloseCurrentPopup();
             }
@@ -237,7 +239,7 @@ void DrawImportDialog() {
 
         if (!app.importWarnings.empty()) {
             ImGui::Spacing();
-            ImGui::Text("%zu warning(s):", app.importWarnings.size());
+            ImGui::TextColored(Theme::Vec(Theme::WARNING_COLOR), ICON_FA_TRIANGLE_EXCLAMATION " %zu warning(s):", app.importWarnings.size());
             ImGui::BeginChild("##warnings", ImVec2(0, 220), ImGuiChildFlags_Borders);
             for (const std::string& warning : app.importWarnings) {
                 ImGui::TextWrapped("%s", warning.c_str());
@@ -268,13 +270,13 @@ void DrawSaveAsDialog() {
                           : other && other != app.current ? "Another component has that name"
                                                           : nullptr;
     if (problem) {
-        ImGui::TextDisabled("%s", problem);
+        ImGui::TextColored(Theme::Vec(Theme::WARNING_COLOR), "%s", problem);
     }
     else {
         ImGui::TextDisabled("Saves %s%s.yaml", componentsDirectory.c_str(), name.c_str());
     }
     ImGui::BeginDisabled(problem != nullptr);
-    if (ImGui::Button("Save") || (enter && !problem)) {
+    if (ImGui::Button(ICON_FA_FLOPPY_DISK "  Save") || (enter && !problem)) {
         if (name != app.current->name) {
             RenameComponent(*app.current, name);
         }
@@ -288,7 +290,7 @@ void DrawSaveAsDialog() {
     }
     ImGui::EndDisabled();
     ImGui::SameLine();
-    if (ImGui::Button("Cancel")) {
+    if (ImGui::Button(ICON_FA_XMARK "  Cancel")) {
         ImGui::CloseCurrentPopup();
     }
     ImGui::EndPopup();

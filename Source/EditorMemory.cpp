@@ -59,7 +59,7 @@ static void RomContentsChanged(Component& component, const Node& node) {
 
 static void DrawRamToolbar(Component& component, Node& node, std::vector<uint32_t>* live) {
     MemoryData& ram = *node.memory;
-    ImGui::SetNextItemWidth(std::max(160.0f, ImGui::GetContentRegionAvail().x - 260));
+    ImGui::SetNextItemWidth(std::max(160.0f, ImGui::GetContentRegionAvail().x - 300));
     ImGui::InputTextWithHint("##path", "preload .bin, relative to the Components folder", app.romPath, sizeof app.romPath);
     ImGui::SetItemTooltip(
         "For example Images/program.bin, so the RAM starts out holding\n"
@@ -67,7 +67,7 @@ static void DrawRamToolbar(Component& component, Node& node, std::vector<uint32_
     std::string path = Trim(app.romPath);
     ImGui::SameLine();
     ImGui::BeginDisabled(path.empty());
-    if (ImGui::Button("Preload")) {
+    if (ImGui::Button(ICON_FA_DOWNLOAD " Preload")) {
         ram.image = path;
         std::string problem = LoadRomImage(ram);
         component.dirty = true;
@@ -78,7 +78,7 @@ static void DrawRamToolbar(Component& component, Node& node, std::vector<uint32_
     }
     ImGui::SameLine();
     ImGui::BeginDisabled(!live);
-    if (ImGui::Button("Export") && live) {
+    if (ImGui::Button(ICON_FA_FILE_EXPORT " Export") && live) {
         MemoryData copy = ram;
         copy.words = *live;
         bool ok = SaveRomImage(copy, (fs::path(componentsDirectory) / path).string());
@@ -89,9 +89,9 @@ static void DrawRamToolbar(Component& component, Node& node, std::vector<uint32_
     ImGui::EndDisabled();
 
     if (!ram.image.empty()) {
-        ImGui::TextColored(ImVec4(0.55f, 0.75f, 1, 1), "Preloaded from %s", ram.image.c_str());
+        ImGui::TextColored(Theme::Vec(Theme::INFO_COLOR), ICON_FA_LINK " Preloaded from %s", ram.image.c_str());
         ImGui::SameLine();
-        if (ImGui::SmallButton("Don't preload")) {
+        if (ImGui::SmallButton(ICON_FA_LINK_SLASH " Don't preload")) {
             ram.image.clear();
             component.dirty = true;
         }
@@ -106,7 +106,7 @@ static void DrawRamToolbar(Component& component, Node& node, std::vector<uint32_
     }
     else {
         ImGui::SameLine();
-        if (ImGui::SmallButton("Clear all")) {
+        if (ImGui::SmallButton(ICON_FA_ERASER " Clear all")) {
             std::fill(live->begin(), live->end(), 0);
             RomContentsChanged(component, node);
         }
@@ -117,14 +117,14 @@ static void DrawRomToolbar(Component& component, Node& node) {
     MemoryData& rom = *node.memory;
     bool linked = !rom.image.empty();
 
-    ImGui::SetNextItemWidth(std::max(160.0f, ImGui::GetContentRegionAvail().x - 330));
+    ImGui::SetNextItemWidth(std::max(160.0f, ImGui::GetContentRegionAvail().x - 380));
     ImGui::InputTextWithHint("##path", "binary file, relative to the Components folder", app.romPath, sizeof app.romPath);
     ImGui::SetItemTooltip("For example Images/program.bin\nWords are little-endian, %d byte(s) each at this width.",
                           RomBytesPerWord(rom));
     std::string path = Trim(app.romPath);
     ImGui::BeginDisabled(path.empty());
     ImGui::SameLine();
-    if (ImGui::Button("Link")) {
+    if (ImGui::Button(ICON_FA_LINK " Link")) {
         rom.image = path;
         std::string problem = LoadRomImage(rom);
         SetStatus("%s", problem.empty() ? ("Contents now come from " + path).c_str() : problem.c_str());
@@ -132,7 +132,7 @@ static void DrawRomToolbar(Component& component, Node& node) {
     }
     ImGui::SetItemTooltip("Read the contents from this file every time the component loads (good for programs)");
     ImGui::SameLine();
-    if (ImGui::Button("Import")) {
+    if (ImGui::Button(ICON_FA_FILE_IMPORT " Import")) {
         rom.image = path;
         std::string problem = LoadRomImage(rom);
         rom.image.clear();  // the words are now this ROM's own
@@ -141,7 +141,7 @@ static void DrawRomToolbar(Component& component, Node& node) {
     }
     ImGui::SetItemTooltip("Copy the file's words into this ROM, to be saved with the component");
     ImGui::SameLine();
-    if (ImGui::Button("Export")) {
+    if (ImGui::Button(ICON_FA_FILE_EXPORT " Export")) {
         bool ok = SaveRomImage(rom, (fs::path(componentsDirectory) / path).string());
         SetStatus(ok ? "Wrote %s" : "Couldn't write %s", path.c_str());
     }
@@ -149,15 +149,15 @@ static void DrawRomToolbar(Component& component, Node& node) {
     ImGui::EndDisabled();
 
     if (linked) {
-        ImGui::TextColored(ImVec4(0.55f, 0.75f, 1, 1), "From %s", rom.image.c_str());
+        ImGui::TextColored(Theme::Vec(Theme::INFO_COLOR), ICON_FA_LINK " From %s", rom.image.c_str());
         ImGui::SameLine();
-        if (ImGui::SmallButton("Reload")) {
+        if (ImGui::SmallButton(ICON_FA_ROTATE " Reload")) {
             std::string problem = LoadRomImage(rom);
             SetStatus("%s", problem.empty() ? "Reloaded" : problem.c_str());
             RomContentsChanged(component, node);
         }
         ImGui::SameLine();
-        if (ImGui::SmallButton("Unlink")) {
+        if (ImGui::SmallButton(ICON_FA_LINK_SLASH " Unlink")) {
             rom.image.clear();
             RomContentsChanged(component, node);
         }
@@ -166,7 +166,7 @@ static void DrawRomToolbar(Component& component, Node& node) {
     else {
         ImGui::TextDisabled("Contents are saved in the component file");
         ImGui::SameLine();
-        if (ImGui::SmallButton("Clear all")) {
+        if (ImGui::SmallButton(ICON_FA_ERASER " Clear all")) {
             std::fill(rom.words.begin(), rom.words.end(), 0);
             RomContentsChanged(component, node);
         }
@@ -239,7 +239,7 @@ static void DrawRomHexView(Component& component, Node& node, std::vector<uint32_
                 size_t address = static_cast<size_t>(row * perRow + column);
                 ImGui::TableNextColumn();
                 if (static_cast<int>(address) == current) {
-                    ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, IM_COL32(60, 140, 70, 200));
+                    ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, Theme::MEMORY_CURRENT_COLOR);
                 }
                 uint32_t value = words[address];
                 ImGui::PushID(static_cast<int>(address));
@@ -285,7 +285,7 @@ static void DrawRomBitsView(Component& component, Node& node, std::vector<uint32
         for (int address = clipper.DisplayStart; address < clipper.DisplayEnd; address++) {
             ImGui::TableNextRow();
             if (address == current) {
-                ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg1, IM_COL32(60, 140, 70, 200));
+                ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg1, Theme::MEMORY_CURRENT_COLOR);
             }
             ImGui::TableNextColumn();
             ImGui::TextDisabled("%0*X", addressDigits, address);
@@ -364,7 +364,7 @@ void DrawRomEditor() {
         ImGui::SameLine();
         ImGui::Checkbox("Follow the address", &app.romFollow);
         ImGui::SameLine();
-        ImGui::TextColored(ImVec4(0.4f, 0.95f, 0.5f, 1), "Address [%X] = %X", current,
+        ImGui::TextColored(Theme::Vec(Theme::ACCENT_COLOR), "Address [%X] = %X", current,
                            static_cast<unsigned>((*words)[static_cast<size_t>(current)]));
     }
     bool scrollToCurrent = current >= 0 && app.romFollow && current != app.romLastAddress;

@@ -20,7 +20,7 @@ static void BeginPanel(const char* name, ImVec2 position, ImVec2 size) {
 // A draggable divider at x. Dragging it changes panelWidth; direction is +1 for a panel on
 // the left (drag right to grow) and -1 for one on the right.
 void DrawSplitter(const char* id, float x, float top, float height, float& panelWidth, float direction) {
-    const float grip = 8;
+    const float grip = Theme::SPLITTER_GRIP, line = Theme::SPLITTER_LINE * 0.5f;
     ImGui::SetNextWindowPos(ImVec2(x - grip * 0.5f, top));
     ImGui::SetNextWindowSize(ImVec2(grip, height));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
@@ -33,7 +33,7 @@ void DrawSplitter(const char* id, float x, float top, float height, float& panel
     ImGui::InvisibleButton("grip", ImVec2(grip, height));
     if (ImGui::IsItemHovered() || ImGui::IsItemActive()) {
         ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
-        ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(x - 1.5f, top), ImVec2(x + 1.5f, top + height),
+        ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(x - line, top), ImVec2(x + line, top + height),
                                                   ImGui::GetColorU32(ImGui::IsItemActive() ? ImGuiCol_SeparatorActive
                                                                                            : ImGuiCol_SeparatorHovered));
     }
@@ -52,8 +52,8 @@ void DrawPalette(ImVec2 position, ImVec2 size) {
     DrawAddNodeMenu(ImVec2(0, 0), true);
 
     ImGui::Spacing();
-    ImGui::SeparatorText("Library");
-    if (ImGui::Button("New component", ImVec2(-1, 0))) {
+    Theme::SectionTitle("Library");
+    if (ImGui::Button(ICON_FA_PLUS "  New component", ImVec2(-1, 0))) {
         NewComponent();
     }
 
@@ -65,7 +65,7 @@ void DrawPalette(ImVec2 position, ImVec2 size) {
 
     for (Component* component : sorted) {
         ImGui::PushID(component);
-        std::string label = component->name + (component->dirty ? " *" : "");
+        std::string label = ICON_FA_MICROCHIP "  " + component->name + (component->dirty ? " *" : "");
         if (ImGui::Selectable(label.c_str(), component == app.current)) {
             OpenComponent(component);
         }
@@ -78,7 +78,7 @@ void DrawPalette(ImVec2 position, ImVec2 size) {
 
 static void DrawSelectedNodeProperties(Node& node) {
     Component& component = *app.current;
-    ImGui::SeparatorText("Selected");
+    Theme::SectionTitle("Selected");
     ImGui::Text("%s", NodeTitle(node).c_str());
     if (IsPrimitive(node.kind)) {
         ImGui::TextWrapped("%s", Primitives[static_cast<int>(node.kind)].description);
@@ -138,7 +138,7 @@ static void DrawSelectedNodeProperties(Node& node) {
             ImGui::TextDisabled("%s %s", node.kind == NodeKind::Rom ? "Contents from" : "Preloaded from",
                                 rom.image.c_str());
         }
-        if (ImGui::Button(node.kind == NodeKind::Rom ? "Edit contents..." : "Contents...")) {
+        if (ImGui::Button(node.kind == NodeKind::Rom ? ICON_FA_TABLE_CELLS "  Edit contents..." : ICON_FA_TABLE_CELLS "  Contents...")) {
             OpenRomEditor(node.id);
         }
         ImGui::SetItemTooltip("Or double-click the ROM");
@@ -147,16 +147,16 @@ static void DrawSelectedNodeProperties(Node& node) {
     if (node.kind == NodeKind::Component) {
         Component* type = FindComponent(node.typeName);
         if (type) {
-            if (ImGui::Button("Open component")) {
+            if (ImGui::Button(ICON_FA_ARROW_UP_RIGHT_FROM_SQUARE "  Open component")) {
                 OpenComponent(type);
             }
         }
         else {
-            ImGui::TextColored(ImVec4(1, 0.4f, 0.4f, 1), "No component named '%s'", node.typeName.c_str());
+            ImGui::TextColored(Theme::Vec(Theme::ERROR_COLOR), ICON_FA_CIRCLE_EXCLAMATION " No component named '%s'", node.typeName.c_str());
         }
     }
 
-    if (ImGui::Button("Delete")) {
+    if (ImGui::Button(ICON_FA_TRASH "  Delete")) {
         RemoveNode(component, node.id);
         ImNodes::EditorContextSet(component.editor);
         ImNodes::ClearNodeSelection();
@@ -167,7 +167,7 @@ void DrawProperties(ImVec2 position, ImVec2 size) {
     Component& component = *app.current;
     BeginPanel("Properties", position, size);
 
-    ImGui::SeparatorText("Component");
+    Theme::SectionTitle("Component");
     if (app.nameBufferOwner != &component || !ImGui::IsAnyItemActive()) {
         if (app.nameBufferOwner != &component || strcmp(app.nameBuffer, component.name.c_str()) != 0) {
             snprintf(app.nameBuffer, sizeof app.nameBuffer, "%s", component.name.c_str());
@@ -230,14 +230,14 @@ void DrawProperties(ImVec2 position, ImVec2 size) {
         }
     }
     else if (ImNodes::NumSelectedNodes() > 1) {
-        ImGui::SeparatorText("Selected");
+        Theme::SectionTitle("Selected");
         ImGui::Text("%d nodes", ImNodes::NumSelectedNodes());
-        if (ImGui::Button("Delete")) {
+        if (ImGui::Button(ICON_FA_TRASH "  Delete")) {
             DeleteSelection();
         }
     }
 
-    ImGui::SeparatorText("How to");
+    Theme::SectionTitle("How to");
     ImGui::TextWrapped(
         "Drag from an output pin to an input pin to wire them. Several wires into one input make a bus.\n"
         "Pins named A0, A1, ... show as one square bus pin, and a wire between two of them carries every bit. "
@@ -258,24 +258,24 @@ void DrawSimulationPanel(ImVec2 position, ImVec2 size) {
     BeginPanel("Simulation", position, size);
 
     ImGui::Text("Simulating '%s'", component.name.c_str());
-    if (ImGui::Button("Back to editor (F5)", ImVec2(-1, 0))) {
+    if (ImGui::Button(ICON_FA_PEN_TO_SQUARE "  Back to editor (F5)", ImVec2(-1, 0))) {
         app.mode = Mode::Edit;
     }
 
-    ImGui::SeparatorText("Clock");
-    if (ImGui::Button(simulation.running ? "Pause (Space)" : "Run (Space)", ImVec2(-1, 0))) {
+    Theme::SectionTitle("Clock");
+    if (ImGui::Button(simulation.running ? ICON_FA_PAUSE "  Pause (Space)" : ICON_FA_PLAY "  Run (Space)", ImVec2(-1, 0))) {
         simulation.running = !simulation.running;
     }
-    if (ImGui::Button("Step one cycle")) {
+    if (ImGui::Button(ICON_FA_FORWARD_STEP " Step one cycle")) {
         HalfStep(simulation);
         HalfStep(simulation);
     }
     ImGui::SameLine();
-    if (ImGui::Button("Half step")) {
+    if (ImGui::Button(ICON_FA_ANGLE_RIGHT " Half step")) {
         HalfStep(simulation);
     }
     ImGui::SameLine();
-    if (ImGui::Button("Reset")) {
+    if (ImGui::Button(ICON_FA_ROTATE_LEFT " Reset")) {
         BuildSimulation(simulation, component);
     }
     ImGui::SetItemTooltip("Power-cycle: flip-flops and RAM start over");
@@ -287,31 +287,32 @@ void DrawSimulationPanel(ImVec2 position, ImVec2 size) {
 
     ImGui::Text("Clock is ");
     ImGui::SameLine(0, 0);
-    ImGui::TextColored(simulation.clock ? ImVec4(0.35f, 0.9f, 0.43f, 1) : ImVec4(0.5f, 0.6f, 0.5f, 1),
+    ImGui::TextColored(Theme::Vec(simulation.clock ? Theme::LEVEL_HIGH_COLOR : Theme::TEXT_DIM_COLOR),
                        simulation.clock ? "HIGH" : "LOW");
     ImGui::Text("Cycles: %llu", static_cast<unsigned long long>(simulation.halfCycles / 2));
 
-    ImGui::SeparatorText("Circuit");
+    Theme::SectionTitle("Circuit");
     ImGui::Text("%zu gates, %d nets", simulation.gates.size(), simulation.netCount);
     ImGui::Text("Last change settled in %d gate delays", simulation.lastSettleSteps);
     ImGui::Text("Slowest clock edge: %d gate delays", simulation.slowestSettleSteps);
     if (simulation.unstable) {
-        ImGui::TextColored(ImVec4(1, 0.5f, 0.3f, 1), "Unstable: still changing after %d gate delays\n(something oscillates)", MaxSettleSteps);
+        ImGui::TextColored(Theme::Vec(Theme::WARNING_COLOR), ICON_FA_TRIANGLE_EXCLAMATION " Unstable: still changing after %d gate delays\n(something oscillates)", MaxSettleSteps);
     }
     if (simulation.conflicts) {
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 0.35f, 0.35f, 1));
+        ImGui::PushStyleColor(ImGuiCol_Text, Theme::Vec(Theme::ERROR_COLOR));
         ImGui::TextWrapped("%d bus conflict(s): a wire driven to 0 and 1 at once (shown red)", simulation.conflicts);
         ImGui::PopStyleColor();
     }
     if (simulation.missingComponents) {
-        ImGui::TextColored(ImVec4(1, 0.4f, 0.4f, 1), "%d missing component(s) left out", simulation.missingComponents);
+        ImGui::TextColored(Theme::Vec(Theme::ERROR_COLOR), ICON_FA_CIRCLE_EXCLAMATION " %d missing component(s) left out", simulation.missingComponents);
     }
     if (simulation.nestingTooDeep) {
-        ImGui::TextColored(ImVec4(1, 0.4f, 0.4f, 1), "Nesting deeper than %d levels was cut off", MaxNestingDepth);
+        ImGui::TextColored(Theme::Vec(Theme::ERROR_COLOR), ICON_FA_CIRCLE_EXCLAMATION " Nesting deeper than %d levels was cut off", MaxNestingDepth);
     }
 
+    static const char* const ClearLabel = ICON_FA_ERASER " Clear";
     if (!simulation.terminals.empty()) {
-        ImGui::SeparatorText("Terminal");
+        Theme::SectionTitle("Terminal");
         ImGui::BeginChild("console", ImVec2(-1, ImGui::GetTextLineHeightWithSpacing() * 10), ImGuiChildFlags_Borders,
                           ImGuiWindowFlags_HorizontalScrollbar);
         ImGui::TextUnformatted(simulation.console.c_str(), simulation.console.c_str() + simulation.console.size());
@@ -319,7 +320,7 @@ void DrawSimulationPanel(ImVec2 position, ImVec2 size) {
             ImGui::SetScrollHereY(1.0f);  // follow new output
         }
         ImGui::EndChild();
-        ImGui::SetNextItemWidth(-ImGui::CalcTextSize("Clear").x - ImGui::GetStyle().FramePadding.x * 2 -
+        ImGui::SetNextItemWidth(-ImGui::CalcTextSize(ClearLabel).x - ImGui::GetStyle().FramePadding.x * 2 -
                                 ImGui::GetStyle().ItemSpacing.x);
         if (ImGui::InputTextWithHint("##type", "type here; Enter sends", app.typeBuffer, sizeof app.typeBuffer,
                                      ImGuiInputTextFlags_EnterReturnsTrue)) {
@@ -332,13 +333,13 @@ void DrawSimulationPanel(ImVec2 position, ImVec2 size) {
             RecordSettle(simulation);  // IRQ and the status register change
         }
         ImGui::SameLine();
-        if (ImGui::Button("Clear")) {
+        if (ImGui::Button(ClearLabel)) {
             simulation.console.clear();
         }
         ImGui::TextDisabled("%zu key(s) waiting to be read", simulation.keys.size());
     }
 
-    ImGui::SeparatorText("Inputs");
+    Theme::SectionTitle("Inputs");
     bool anyInput = false;
     for (const Node* node : PinNodes(component, NodeKind::Input)) {
         anyInput = true;
@@ -363,7 +364,7 @@ void DrawSimulationPanel(ImVec2 position, ImVec2 size) {
         ImGui::TextDisabled("(no Input nodes)");
     }
 
-    ImGui::SeparatorText("Outputs");
+    Theme::SectionTitle("Outputs");
     bool anyOutput = false;
     for (const Node* node : PinNodes(component, NodeKind::Output)) {
         anyOutput = true;
@@ -384,7 +385,7 @@ void DrawSimulationPanel(ImVec2 position, ImVec2 size) {
         ImGui::TextDisabled("(no Output nodes)");
     }
 
-    ImGui::SeparatorText("Inspector");
+    Theme::SectionTitle("Inspector");
     int inspected = app.hoveredNode;
     ImNodes::EditorContextSet(component.editor);
     if (inspected < 0 && ImNodes::NumSelectedNodes() == 1) {
@@ -392,7 +393,7 @@ void DrawSimulationPanel(ImVec2 position, ImVec2 size) {
     }
     if (const Node* node = inspected >= 0 ? component.FindNode(static_cast<uint32_t>(inspected)) : nullptr) {
         ImGui::Text("%s", NodeTitle(*node).c_str());
-        if (IsMemory(node->kind) && ImGui::SmallButton("Show contents")) {
+        if (IsMemory(node->kind) && ImGui::SmallButton(ICON_FA_TABLE_CELLS " Show contents")) {
             OpenRomEditor(node->id);
         }
         for (int index = 0; index < InputCount(*node); index++) {

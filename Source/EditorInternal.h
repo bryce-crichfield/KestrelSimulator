@@ -11,6 +11,7 @@
 
 #include "Circuit.h"
 #include "Simulation.h"
+#include "Theme.h"
 
 #include "imgui.h"
 #include "imnodes.h"
@@ -50,7 +51,7 @@ struct App {
     const Component* descriptionBufferOwner = nullptr;
 
     // Side panel widths; the splitters between panels and canvas change them.
-    float paletteWidth = 220, propertiesWidth = 290, simulationWidth = 300;
+    float paletteWidth = Theme::PALETTE_WIDTH, propertiesWidth = Theme::PROPERTIES_WIDTH, simulationWidth = Theme::SIMULATION_WIDTH;
     ImNodesStyle baseNodeStyle;  // imnodes sizes at zoom 1
 
     // ROM contents window

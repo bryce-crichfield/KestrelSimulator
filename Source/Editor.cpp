@@ -83,45 +83,45 @@ static void DrawMenuBar() {
     bool editing = app.mode == Mode::Edit;
 
     if (ImGui::BeginMenu("File")) {
-        if (ImGui::MenuItem("New component", "Ctrl+N", false, editing)) {
+        if (ImGui::MenuItem(ICON_FA_FILE_CIRCLE_PLUS "  New component", "Ctrl+N", false, editing)) {
             NewComponent();
         }
-        if (ImGui::MenuItem("Import from KiCad...", nullptr, false, editing)) {
+        if (ImGui::MenuItem(ICON_FA_FILE_IMPORT "  Import from KiCad...", nullptr, false, editing)) {
             app.importRequested = true;
         }
         ImGui::Separator();
-        if (ImGui::MenuItem("Save as...", "Ctrl+Shift+S", false, editing)) {
+        if (ImGui::MenuItem(ICON_FA_FILE_PEN "  Save as...", "Ctrl+Shift+S", false, editing)) {
             app.saveAsRequested = true;
         }
-        if (ImGui::MenuItem("Save all", "Ctrl+S")) {
+        if (ImGui::MenuItem(ICON_FA_FLOPPY_DISK "  Save all", "Ctrl+S")) {
             SaveAllWithStatus();
         }
         ImGui::Separator();
-        if (ImGui::MenuItem("Quit")) {
+        if (ImGui::MenuItem(ICON_FA_POWER_OFF "  Quit")) {
             app.quitRequested = true;
         }
         ImGui::EndMenu();
     }
     if (ImGui::BeginMenu("Mode")) {
-        if (ImGui::MenuItem("Edit", "F5", editing)) {
+        if (ImGui::MenuItem(ICON_FA_PEN_TO_SQUARE "  Edit", "F5", editing)) {
             app.mode = Mode::Edit;
         }
-        if (ImGui::MenuItem("Simulate", "F5", !editing) && editing) {
+        if (ImGui::MenuItem(ICON_FA_PLAY "  Simulate", "F5", !editing) && editing) {
             EnterSimulation();
         }
         ImGui::EndMenu();
     }
     if (ImGui::BeginMenu("View")) {
-        ImGui::MenuItem("Minimap", nullptr, &app.showMiniMap);
-        if (ImGui::MenuItem("Reset zoom", "Ctrl+0")) {
+        ImGui::MenuItem(ICON_FA_MAP "  Minimap", nullptr, &app.showMiniMap);
+        if (ImGui::MenuItem(ICON_FA_MAGNIFYING_GLASS "  Reset zoom", "Ctrl+0")) {
             ResetZoom(*app.current);
         }
         ImGui::EndMenu();
     }
 
     ImGui::Separator();
-    ImGui::TextColored(editing ? ImVec4(0.6f, 0.75f, 1, 1) : ImVec4(0.4f, 0.95f, 0.5f, 1), "%s: %s%s",
-                       editing ? "Editing" : "Simulating", app.current->name.c_str(), app.current->dirty ? " *" : "");
+    ImGui::TextColored(Theme::Vec(editing ? Theme::ACCENT_COLOR : Theme::SUCCESS_COLOR), "%s %s: %s%s",
+                       editing ? ICON_FA_PEN : ICON_FA_BOLT, editing ? "Editing" : "Simulating", app.current->name.c_str(), app.current->dirty ? " *" : "");
     if (!app.status.empty() && GetTime() < app.statusUntil) {
         ImGui::Separator();
         ImGui::TextUnformatted(app.status.c_str());
@@ -142,7 +142,7 @@ static void DrawQuitDialog() {
     ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
     if (ImGui::BeginPopupModal("Unsaved changes", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::Text("Some components have unsaved changes.");
-        if (ImGui::Button("Save all and quit")) {
+        if (ImGui::Button(ICON_FA_FLOPPY_DISK "  Save all and quit")) {
             if (SaveAll() == 0) {
                 app.quit = true;
             }
@@ -256,11 +256,12 @@ int RunEditor(const char* screenshotPath, bool simulateOnStart) {
     SetExitKey(KEY_NULL);
     SetTargetFPS(60);
 
-    rlImGuiSetup(true);
+    rlImGuiBeginInitImGui();
+    Theme::LoadFonts();
+    rlImGuiEndInitImGui();
     ImGui::GetIO().IniFilename = nullptr;
     ImNodes::CreateContext();
-    ImNodes::StyleColorsDark();
-    ImNodes::GetStyle().Flags |= ImNodesStyleFlags_GridLines;
+    Theme::Apply();
     app.baseNodeStyle = ImNodes::GetStyle();
     app.simulation.randomRam = true;
 
@@ -285,7 +286,8 @@ int RunEditor(const char* screenshotPath, bool simulateOnStart) {
         RunClock(GetFrameTime());
 
         BeginDrawing();
-        ClearBackground(Color{24, 26, 30, 255});
+        ImVec4 background = Theme::Vec(Theme::BACKGROUND_COLOR);
+        ClearBackground(ColorFromNormalized(Vector4{background.x, background.y, background.z, 1}));
         rlImGuiBegin();
         DrawFrame();
         rlImGuiEnd();
