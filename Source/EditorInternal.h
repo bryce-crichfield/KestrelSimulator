@@ -2,8 +2,9 @@
 // its interface.
 //
 //   Editor.cpp        the app state, actions, menu bar, shortcuts, the frame and the window
-//   EditorCanvas.cpp  the node canvas: nodes, pins, wires, zoom, and the add-node menu
-//   EditorPanels.cpp  the palette, properties and simulation panels
+//   EditorToolbar.cpp the toolbar under the menu bar: the mode, the component picker, and tools for the mode
+//   EditorCanvas.cpp  the node canvas: nodes, pins, wires, zoom, the clipboard, and its menus
+//   EditorPanels.cpp  the properties and simulation panels
 //   EditorMemory.cpp  the ROM and RAM contents window
 //   EditorImport.cpp  the KiCad import and Save as dialogs
 
@@ -23,6 +24,19 @@
 
 namespace Kestrel {
 
+// Copied nodes, and the wires between them.
+struct Clipboard {
+    std::vector<Node> nodes;
+    std::vector<Wire> wires;
+};
+
+// What the palette and library drag onto the canvas.
+constexpr const char* NodePayload = "KESTREL_NODE";
+struct NodeDrag {
+    NodeKind kind;
+    char typeName[MaxNameLength];
+};
+
 enum class Mode { Edit,
                   Simulate };
 
@@ -35,10 +49,17 @@ struct App {
     double statusUntil = 0;
 
     ImVec2 canvasCenter{400, 300};
+    ImVec2 canvasPosition{0, 0}, canvasSize{0, 0};
     ImVec2 popupScreenPosition{0, 0};
     int spawnCount = 0;
     int hoveredNode = -1;
+    int contextNode = -1;  // the node right-clicked
     bool showMiniMap = true;
+    bool showControls = false;  // Help > Controls
+    Clipboard clipboard;
+    int pasteCount = 0;                     // pastes since the last copy, each further along
+    std::vector<uint32_t> selectAfterDraw;  // pasted nodes, selected once imnodes knows them
+    char libraryFilter[64] = "";
     bool quitRequested = false;
     char typeBuffer[256] = "";
     bool quit = false;
@@ -51,7 +72,7 @@ struct App {
     const Component* descriptionBufferOwner = nullptr;
 
     // Side panel widths; the splitters between panels and canvas change them.
-    float paletteWidth = Theme::PALETTE_WIDTH, propertiesWidth = Theme::PROPERTIES_WIDTH, simulationWidth = Theme::SIMULATION_WIDTH;
+    float propertiesWidth = Theme::PROPERTIES_WIDTH, simulationWidth = Theme::SIMULATION_WIDTH;
     ImNodesStyle baseNodeStyle;  // imnodes sizes at zoom 1
 
     // ROM contents window
@@ -89,6 +110,7 @@ void SetStatus(const char* format, ...);
 void EnsureEditor(Component& component);
 void OpenComponent(Component* component);
 void NewComponent();
+void SaveAllWithStatus();
 void EnterSimulation();
 
 // EditorCanvas.cpp
@@ -99,14 +121,29 @@ void DrawLed(bool on);
 // floating or in conflict.
 std::string BusText(const Simulation& simulation, const std::vector<int>& nets);
 std::vector<int> PinNets(const Simulation& simulation, uint32_t node, bool output, int first, int count);
-void DrawAddNodeMenu(ImVec2 screenPosition, bool atCenter);
+// The parts to add; components from the library too unless withComponents is false.
+void DrawAddNodeMenu(ImVec2 screenPosition, bool atCenter, bool withComponents = true);
+bool CanPlace(const Component& component);
+void PlaceNodeAtCenter(NodeKind kind, const std::string& typeName = "");
+bool HasSelection();
 void DeleteSelection();
+void DrawEditMenuItems(bool withPaste);  // Cut, Copy, (Paste,) Duplicate, Delete
+void CopySelection();
+void CutSelection();
+// Pastes at the mouse if it's over the canvas, otherwise a step on from what was copied.
+void Paste();
+void DuplicateSelection();
+void SelectAll();
 void ResetZoom(Component& component);
+void ZoomBy(Component& component, float factor);  // about the middle of the canvas
 void DrawCanvas(ImVec2 position, ImVec2 size);
+
+// EditorToolbar.cpp
+float ToolbarHeight();
+void DrawToolbar(ImVec2 position, float width);
 
 // EditorPanels.cpp
 void DrawSplitter(const char* id, float x, float top, float height, float& panelWidth, float direction);
-void DrawPalette(ImVec2 position, ImVec2 size);
 void DrawProperties(ImVec2 position, ImVec2 size);
 void DrawSimulationPanel(ImVec2 position, ImVec2 size);
 

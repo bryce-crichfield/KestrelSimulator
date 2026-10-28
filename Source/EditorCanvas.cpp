@@ -1,10 +1,14 @@
-// EditorCanvas.cpp -- the node canvas: nodes, pins, wires, zoom, and the add-node menu.
+// EditorCanvas.cpp -- the node canvas: nodes, pins, wires, zoom, the clipboard, and its menus.
 
 #include "ComponentFile.h"
 #include "EditorInternal.h"
 
+#include "imgui_internal.h"
+
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
+#include <map>
 #include <unordered_set>
 
 namespace Kestrel {
@@ -126,12 +130,12 @@ static void PlaceNode(NodeKind kind, const std::string& typeName, ImVec2 screenP
     node->position = screenPosition;
 }
 
-static void PlaceNodeAtCenter(NodeKind kind, const std::string& typeName = "") {
+void PlaceNodeAtCenter(NodeKind kind, const std::string& typeName) {
     float offset = static_cast<float>(app.spawnCount++ % 8) * 18.0f;
     PlaceNode(kind, typeName, ImVec2(app.canvasCenter.x - 60 + offset, app.canvasCenter.y - 40 + offset));
 }
 
-static bool CanPlace(const Component& component) {
+bool CanPlace(const Component& component) {
     return &component != app.current && !Uses(component, app.current->name);
 }
 
@@ -390,44 +394,54 @@ static void DrawNode(Node& node) {
     ImNodes::PopColorStyle();
 }
 
-void DrawAddNodeMenu(ImVec2 screenPosition, bool atCenter) {
-    auto place = [&](NodeKind kind, const std::string& typeName) {
-        if (atCenter) {
-            PlaceNodeAtCenter(kind, typeName);
+// Lets a palette or library item be dragged onto the canvas.
+static void NodeDragSource(NodeKind kind, const std::string& typeName, const char* label) {
+    if (ImGui::BeginDragDropSource()) {
+        NodeDrag drag{kind, ""};
+        snprintf(drag.typeName, sizeof drag.typeName, "%s", typeName.c_str());
+        ImGui::SetDragDropPayload(NodePayload, &drag, sizeof drag);
+        ImGui::Text(ICON_FA_PLUS " %s", label);
+        ImGui::EndDragDropSource();
+    }
+}
+
+void DrawAddNodeMenu(ImVec2 screenPosition, bool atCenter, bool withComponents) {
+    auto item = [&](NodeKind kind, const std::string& typeName, const char* label, const char* tooltip, bool enabled) {
+        if (ImGui::MenuItem(label, nullptr, false, enabled)) {
+            if (atCenter) {
+                PlaceNodeAtCenter(kind, typeName);
+            }
+            else {
+                PlaceNode(kind, typeName, screenPosition);
+            }
         }
-        else {
-            PlaceNode(kind, typeName, screenPosition);
+        if (enabled) {
+            NodeDragSource(kind, typeName, label);
+        }
+        if (tooltip && *tooltip) {
+            ImGui::SetItemTooltip("%s", tooltip);
+        }
+    };
+    auto primitives = [&](std::initializer_list<NodeKind> kinds) {
+        for (NodeKind kind : kinds) {
+            const PrimitiveInfo& primitive = Primitives[static_cast<int>(kind)];
+            item(kind, "", primitive.name, primitive.description, true);
         }
     };
 
     Theme::SectionTitle("Pins");
-    for (NodeKind kind : {NodeKind::Input, NodeKind::Output}) {
-        if (ImGui::MenuItem(Primitives[static_cast<int>(kind)].name)) {
-            place(kind, "");
-        }
-        ImGui::SetItemTooltip("%s", Primitives[static_cast<int>(kind)].description);
-    }
+    primitives({NodeKind::Input, NodeKind::Output});
     Theme::SectionTitle("Gates");
-    for (NodeKind kind : {NodeKind::Not, NodeKind::And, NodeKind::Or, NodeKind::Nand, NodeKind::Nor, NodeKind::Xor,
-                          NodeKind::Xnor, NodeKind::Buffer, NodeKind::TriState}) {
-        if (ImGui::MenuItem(Primitives[static_cast<int>(kind)].name)) {
-            place(kind, "");
-        }
-        ImGui::SetItemTooltip("%s", Primitives[static_cast<int>(kind)].description);
-    }
+    primitives({NodeKind::Not, NodeKind::And, NodeKind::Or, NodeKind::Nand, NodeKind::Nor, NodeKind::Xor, NodeKind::Xnor,
+                NodeKind::Buffer, NodeKind::TriState});
     Theme::SectionTitle("Memory and timing");
-    for (NodeKind kind : {NodeKind::FlipFlop, NodeKind::FlipFlopSR, NodeKind::Rom, NodeKind::Ram, NodeKind::Clock, NodeKind::Low,
-                          NodeKind::High}) {
-        if (ImGui::MenuItem(Primitives[static_cast<int>(kind)].name)) {
-            place(kind, "");
-        }
-        ImGui::SetItemTooltip("%s", Primitives[static_cast<int>(kind)].description);
-    }
+    primitives({NodeKind::FlipFlop, NodeKind::FlipFlopSR, NodeKind::Rom, NodeKind::Ram, NodeKind::Clock, NodeKind::Low,
+                NodeKind::High});
     Theme::SectionTitle("Input/output");
-    if (ImGui::MenuItem(Primitives[static_cast<int>(NodeKind::Terminal)].name)) {
-        place(NodeKind::Terminal, "");
+    primitives({NodeKind::Terminal});
+    if (!withComponents) {
+        return;
     }
-    ImGui::SetItemTooltip("%s", Primitives[static_cast<int>(NodeKind::Terminal)].description);
     Theme::SectionTitle("Components");
     bool any = false;
     for (auto& component : library) {
@@ -436,23 +450,32 @@ void DrawAddNodeMenu(ImVec2 screenPosition, bool atCenter) {
         }
         any = true;
         bool allowed = CanPlace(*component);
-        if (ImGui::MenuItem(component->name.c_str(), nullptr, false, allowed)) {
-            place(NodeKind::Component, component->name);
-        }
-        if (!allowed) {
-            ImGui::SetItemTooltip("It uses '%s', so it can't go inside it", app.current->name.c_str());
-        }
-        else if (!component->description.empty()) {
-            ImGui::SetItemTooltip("%s", component->description.c_str());
-        }
+        std::string tooltip = allowed ? component->description
+                                      : "It uses '" + app.current->name + "', so it can't go inside it";
+        item(NodeKind::Component, component->name, component->name.c_str(), tooltip.c_str(), allowed);
     }
     if (!any) {
         ImGui::TextDisabled("(none yet)");
     }
 }
 
+bool HasSelection() {
+    ImNodes::EditorContextSet(app.current->editor);
+    return ImNodes::NumSelectedNodes() > 0 || ImNodes::NumSelectedLinks() > 0;
+}
+
+static std::vector<uint32_t> SelectedNodes() {
+    ImNodes::EditorContextSet(app.current->editor);
+    std::vector<int> ids(static_cast<size_t>(ImNodes::NumSelectedNodes()));
+    if (!ids.empty()) {
+        ImNodes::GetSelectedNodes(ids.data());
+    }
+    return std::vector<uint32_t>(ids.begin(), ids.end());
+}
+
 void DeleteSelection() {
     Component& component = *app.current;
+    ImNodes::EditorContextSet(component.editor);
     int linkCount = ImNodes::NumSelectedLinks();
     if (linkCount > 0) {
         std::vector<int> links(static_cast<size_t>(linkCount));
@@ -471,6 +494,126 @@ void DeleteSelection() {
     }
     ImNodes::ClearLinkSelection();
     ImNodes::ClearNodeSelection();
+}
+
+void CopySelection() {
+    const Component& component = *app.current;
+    std::vector<uint32_t> selected = SelectedNodes();
+    if (selected.empty()) {
+        return;
+    }
+    Clipboard clipboard;
+    std::set<uint32_t> ids(selected.begin(), selected.end());
+    for (const Node& node : component.nodes) {
+        if (ids.count(node.id)) {
+            clipboard.nodes.push_back(node);
+            if (node.memory) {
+                clipboard.nodes.back().memory = std::make_shared<MemoryData>(*node.memory);  // its own copy
+            }
+        }
+    }
+    for (const Wire& wire : component.wires) {
+        if (ids.count(wire.fromNode) && ids.count(wire.toNode)) {
+            clipboard.wires.push_back(wire);
+        }
+    }
+    app.clipboard = std::move(clipboard);
+    app.pasteCount = 0;
+    SetStatus("Copied %zu node(s)", app.clipboard.nodes.size());
+}
+
+void CutSelection() {
+    CopySelection();
+    DeleteSelection();
+}
+
+// A screen position as a node position: grid space at zoom 1.
+static ImVec2 ScreenToNodePosition(const Component& component, ImVec2 screen) {
+    ImNodes::EditorContextSet(component.editor);
+    ImVec2 panning = ImNodes::EditorContextGetPanning();
+    return ImVec2((screen.x - app.canvasPosition.x - panning.x) / component.zoom,
+                  (screen.y - app.canvasPosition.y - panning.y) / component.zoom);
+}
+
+static void PasteAt(bool atMouse) {
+    Component& component = *app.current;
+    const Clipboard& clipboard = app.clipboard;
+    if (clipboard.nodes.empty()) {
+        return;
+    }
+    ImVec2 corner(1e9f, 1e9f);
+    for (const Node& node : clipboard.nodes) {
+        corner = ImVec2(std::min(corner.x, node.position.x), std::min(corner.y, node.position.y));
+    }
+    ImVec2 mouse = ImGui::GetMousePos();
+    bool overCanvas = mouse.x >= app.canvasPosition.x && mouse.y >= app.canvasPosition.y &&
+                      mouse.x < app.canvasPosition.x + app.canvasSize.x && mouse.y < app.canvasPosition.y + app.canvasSize.y;
+    float step = 30.0f * static_cast<float>(++app.pasteCount);
+    ImVec2 target = atMouse && overCanvas ? ScreenToNodePosition(component, mouse) : ImVec2(corner.x + step, corner.y + step);
+
+    std::map<uint32_t, uint32_t> newIds;
+    int skipped = 0;
+    app.selectAfterDraw.clear();
+    for (Node node : clipboard.nodes) {
+        if (node.kind == NodeKind::Component) {
+            const Component* type = FindComponent(node.typeName);
+            if (!type || !CanPlace(*type)) {
+                skipped++;
+                continue;
+            }
+        }
+        uint32_t oldId = node.id;
+        node.id = component.nextId++;
+        if (node.memory) {
+            node.memory = std::make_shared<MemoryData>(*node.memory);
+        }
+        if (node.kind == NodeKind::Input || node.kind == NodeKind::Output) {
+            for (const Node& other : component.nodes) {
+                if (other.kind == node.kind && other.label == node.label) {
+                    node.label = UniquePinLabel(component, node.kind);  // pin names must stay unique
+                    break;
+                }
+            }
+        }
+        node.position = ImVec2(node.position.x - corner.x + target.x, node.position.y - corner.y + target.y);
+        node.placement = Node::Placement::Grid;
+        newIds[oldId] = node.id;
+        app.selectAfterDraw.push_back(node.id);
+        component.nodes.push_back(node);
+    }
+    for (const Wire& wire : clipboard.wires) {
+        if (newIds.count(wire.fromNode) && newIds.count(wire.toNode)) {
+            Connect(component, newIds[wire.fromNode], static_cast<int>(wire.fromPin), newIds[wire.toNode],
+                    static_cast<int>(wire.toPin), static_cast<int>(wire.width));
+        }
+    }
+    component.dirty = true;
+    if (skipped) {
+        SetStatus("Pasted %zu node(s); %d component(s) can't go inside '%s'", newIds.size(), skipped, component.name.c_str());
+    }
+    else {
+        SetStatus("Pasted %zu node(s)", newIds.size());
+    }
+}
+
+void Paste() {
+    PasteAt(true);
+}
+
+void DuplicateSelection() {
+    Clipboard kept = app.clipboard;
+    int keptCount = app.pasteCount;
+    CopySelection();
+    PasteAt(false);  // just beside the original
+    app.clipboard = std::move(kept);
+    app.pasteCount = keptCount;
+}
+
+void SelectAll() {
+    ImNodes::EditorContextSet(app.current->editor);
+    for (const Node& node : app.current->nodes) {
+        ImNodes::SelectNode(static_cast<int>(node.id));
+    }
 }
 
 constexpr float MinZoom = 0.25f, MaxZoom = 3.0f;
@@ -493,6 +636,23 @@ static void ScaleNodeStyle(float zoom) {
     style.PinOffset = base.PinOffset * zoom;
 }
 
+// Zooms to newZoom about pivot (relative to the canvas's corner): that point stays put on screen.
+static void ZoomAbout(Component& component, float newZoom, ImVec2 pivot) {
+    newZoom = std::clamp(newZoom, MinZoom, MaxZoom);
+    ImNodes::EditorContextSet(component.editor);
+    ImVec2 panning = ImNodes::EditorContextGetPanning();
+    float ratio = newZoom / component.zoom;
+    ImNodes::EditorContextResetPanning(
+        ImVec2(pivot.x - (pivot.x - panning.x) * ratio, pivot.y - (pivot.y - panning.y) * ratio));
+    component.zoom = newZoom;
+}
+
+void ZoomBy(Component& component, float factor) {
+    if (component.editor) {
+        ZoomAbout(component, component.zoom * factor, ImVec2(app.canvasSize.x * 0.5f, app.canvasSize.y * 0.5f));
+    }
+}
+
 void ResetZoom(Component& component) {
     if (!component.editor) {
         return;
@@ -501,6 +661,95 @@ void ResetZoom(Component& component) {
     ImVec2 panning = ImNodes::EditorContextGetPanning();
     ImNodes::EditorContextResetPanning(ImVec2(panning.x / component.zoom, panning.y / component.zoom));
     component.zoom = 1.0f;
+}
+
+// The Edit actions as menu items; the canvas's right-click menus and the Edit menu share them.
+void DrawEditMenuItems(bool withPaste) {
+    bool selection = HasSelection();
+    if (ImGui::MenuItem(ICON_FA_SCISSORS "  Cut", "Ctrl+X", false, selection)) {
+        CutSelection();
+    }
+    if (ImGui::MenuItem(ICON_FA_COPY "  Copy", "Ctrl+C", false, selection)) {
+        CopySelection();
+    }
+    if (withPaste && ImGui::MenuItem(ICON_FA_PASTE "  Paste", "Ctrl+V", false, !app.clipboard.nodes.empty())) {
+        Paste();
+    }
+    if (ImGui::MenuItem(ICON_FA_CLONE "  Duplicate", "Ctrl+D", false, selection)) {
+        DuplicateSelection();
+    }
+    if (ImGui::MenuItem(ICON_FA_TRASH "  Delete", "Del", false, selection)) {
+        DeleteSelection();
+    }
+}
+
+// Right-click: a node (and whatever else is selected with it), a wire, or the empty canvas.
+static void DrawContextMenus(int hoveredLink) {
+    Component& component = *app.current;
+    if (ImGui::IsMouseReleased(ImGuiMouseButton_Right) && ImNodes::IsEditorHovered() &&
+        !ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId)) {
+        app.popupScreenPosition = ImGui::GetMousePos();
+        if (app.hoveredNode >= 0) {
+            if (!ImNodes::IsNodeSelected(app.hoveredNode)) {
+                ImNodes::ClearNodeSelection();
+                ImNodes::ClearLinkSelection();
+                ImNodes::SelectNode(app.hoveredNode);
+            }
+            app.contextNode = app.hoveredNode;
+            ImGui::OpenPopup("Node");
+        }
+        else if (hoveredLink >= 0) {
+            ImNodes::ClearNodeSelection();
+            ImNodes::ClearLinkSelection();
+            ImNodes::SelectLink(hoveredLink);
+            ImGui::OpenPopup("Wire");
+        }
+        else {
+            ImGui::OpenPopup("Canvas");
+        }
+    }
+
+    if (ImGui::BeginPopup("Node")) {
+        int count = ImNodes::NumSelectedNodes();
+        const Node* node = component.FindNode(static_cast<uint32_t>(app.contextNode));
+        if (count > 1) {
+            ImGui::TextDisabled("%d nodes", count);
+        }
+        else if (node) {
+            ImGui::TextDisabled("%s", NodeTitle(*node).c_str());
+        }
+        ImGui::Separator();
+        if (count == 1 && node) {
+            if (IsMemory(node->kind) && ImGui::MenuItem(ICON_FA_TABLE_CELLS "  Contents...")) {
+                OpenRomEditor(node->id);
+            }
+            Component* type = node->kind == NodeKind::Component ? FindComponent(node->typeName) : nullptr;
+            if (type && ImGui::MenuItem(ICON_FA_ARROW_UP_RIGHT_FROM_SQUARE "  Open component")) {
+                OpenComponent(type);
+            }
+            if (IsMemory(node->kind) || type) {
+                ImGui::Separator();
+            }
+        }
+        DrawEditMenuItems(false);
+        ImGui::EndPopup();
+    }
+    if (ImGui::BeginPopup("Wire")) {
+        if (ImGui::MenuItem(ICON_FA_TRASH "  Delete wire", "Del")) {
+            DeleteSelection();
+        }
+        ImGui::EndPopup();
+    }
+    if (ImGui::BeginPopup("Canvas")) {
+        if (ImGui::MenuItem(ICON_FA_PASTE "  Paste here", "Ctrl+V", false, !app.clipboard.nodes.empty())) {
+            Paste();
+        }
+        if (ImGui::MenuItem(ICON_FA_OBJECT_GROUP "  Select all", "Ctrl+A", false, !component.nodes.empty())) {
+            SelectAll();
+        }
+        DrawAddNodeMenu(app.popupScreenPosition, false);
+        ImGui::EndPopup();
+    }
 }
 
 void DrawCanvas(ImVec2 position, ImVec2 size) {
@@ -516,6 +765,8 @@ void DrawCanvas(ImVec2 position, ImVec2 size) {
                      ImGuiWindowFlags_NoBringToFrontOnFocus);
     ImGui::PopStyleVar();
     app.canvasCenter = ImVec2(position.x + size.x * 0.5f, position.y + size.y * 0.5f);
+    app.canvasPosition = position;
+    app.canvasSize = size;
 
     EnsureEditor(component);
     ImNodes::EditorContextSet(component.editor);
@@ -528,14 +779,8 @@ void DrawCanvas(ImVec2 position, ImVec2 size) {
     // Mouse wheel zooms about the point under the cursor: that point stays put on screen.
     ImGuiIO& io = ImGui::GetIO();
     if (io.MouseWheel != 0 && ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows)) {
-        float oldZoom = component.zoom;
-        float newZoom = std::clamp(oldZoom * std::pow(1.15f, io.MouseWheel), MinZoom, MaxZoom);
-        ImVec2 mouse(io.MousePos.x - position.x, io.MousePos.y - position.y);
-        ImVec2 panning = ImNodes::EditorContextGetPanning();
-        float ratio = newZoom / oldZoom;
-        ImNodes::EditorContextResetPanning(
-            ImVec2(mouse.x - (mouse.x - panning.x) * ratio, mouse.y - (mouse.y - panning.y) * ratio));
-        component.zoom = newZoom;
+        ZoomAbout(component, component.zoom * std::pow(1.15f, io.MouseWheel),
+                  ImVec2(io.MousePos.x - position.x, io.MousePos.y - position.y));
     }
     float zoom = component.zoom;
     ScaleNodeStyle(zoom);
@@ -586,6 +831,15 @@ void DrawCanvas(ImVec2 position, ImVec2 size) {
     ImGui::PopFont();
     ScaleNodeStyle(1.0f);
 
+    if (!app.selectAfterDraw.empty()) {  // imnodes knows the pasted nodes now
+        ImNodes::ClearNodeSelection();
+        ImNodes::ClearLinkSelection();
+        for (uint32_t id : app.selectAfterDraw) {
+            ImNodes::SelectNode(static_cast<int>(id));
+        }
+        app.selectAfterDraw.clear();
+    }
+
     // Positions: remember where nodes were dragged.
     for (Node& node : component.nodes) {
         ImVec2 now = ImNodes::GetNodeGridSpacePos(static_cast<int>(node.id));
@@ -598,8 +852,9 @@ void DrawCanvas(ImVec2 position, ImVec2 size) {
 
     int hovered = -1;
     app.hoveredNode = ImNodes::IsNodeHovered(&hovered) ? hovered : -1;
-    int hoveredLink;
-    if (ImNodes::IsLinkHovered(&hoveredLink)) {
+    int hoveredLink = -1;
+    bool linkHovered = ImNodes::IsLinkHovered(&hoveredLink);
+    if (linkHovered) {
         for (const Wire& wire : component.wires) {
             const Node* from = component.FindNode(wire.fromNode);
             const Node* to = component.FindNode(wire.toNode);
@@ -658,14 +913,29 @@ void DrawCanvas(ImVec2 position, ImVec2 size) {
             DeleteSelection();
         }
 
-        if (ImNodes::IsEditorHovered() && app.hoveredNode < 0 && ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
-            app.popupScreenPosition = ImGui::GetMousePos();
-            ImGui::OpenPopup("Add node");
+        // Parts dragged in from the palette or the library.
+        if (ImGui::BeginDragDropTargetCustom(ImRect(position, ImVec2(position.x + size.x, position.y + size.y)),
+                                             ImGui::GetID("canvas drop"))) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(NodePayload)) {
+                const NodeDrag& drag = *static_cast<const NodeDrag*>(payload->Data);
+                PlaceNode(drag.kind, drag.typeName, ImGui::GetMousePos());
+            }
+            ImGui::EndDragDropTarget();
         }
-        if (ImGui::BeginPopup("Add node")) {
-            DrawAddNodeMenu(app.popupScreenPosition, false);
-            ImGui::EndPopup();
+
+        DrawContextMenus(linkHovered ? hoveredLink : -1);
+    }
+    else if (app.hoveredNode >= 0 && ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
+        app.contextNode = app.hoveredNode;
+        ImGui::OpenPopup("Node");
+    }
+    if (!editing && ImGui::BeginPopup("Node")) {
+        const Node* node = component.FindNode(static_cast<uint32_t>(app.contextNode));
+        ImGui::TextDisabled("%s", node ? NodeTitle(*node).c_str() : "");
+        if (node && IsMemory(node->kind) && ImGui::MenuItem(ICON_FA_TABLE_CELLS "  Show contents")) {
+            OpenRomEditor(node->id);
         }
+        ImGui::EndPopup();
     }
 
     ImGui::End();

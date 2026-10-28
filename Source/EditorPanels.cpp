@@ -1,4 +1,4 @@
-// EditorPanels.cpp -- the side panels: palette, properties and simulation.
+// EditorPanels.cpp -- the side panels: properties and simulation.
 
 #include "ComponentFile.h"
 #include "EditorInternal.h"
@@ -8,6 +8,13 @@
 #include <cstring>
 
 namespace Kestrel {
+
+// Dim text that wraps at the panel's edge.
+static void Hint(const char* text) {
+    ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+    ImGui::TextWrapped("%s", text);
+    ImGui::PopStyleColor();
+}
 
 static void BeginPanel(const char* name, ImVec2 position, ImVec2 size) {
     ImGui::SetNextWindowPos(position);
@@ -40,39 +47,6 @@ void DrawSplitter(const char* id, float x, float top, float height, float& panel
     if (ImGui::IsItemActive()) {
         panelWidth += ImGui::GetIO().MouseDelta.x * direction;
     }
-    ImGui::End();
-}
-
-void DrawPalette(ImVec2 position, ImVec2 size) {
-    BeginPanel("Palette", position, size);
-
-    ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-    ImGui::TextWrapped("Click to add, or right-click the canvas.");
-    ImGui::PopStyleColor();
-    DrawAddNodeMenu(ImVec2(0, 0), true);
-
-    ImGui::Spacing();
-    Theme::SectionTitle("Library");
-    if (ImGui::Button(ICON_FA_PLUS "  New component", ImVec2(-1, 0))) {
-        NewComponent();
-    }
-
-    std::vector<Component*> sorted;
-    for (auto& component : library) {
-        sorted.push_back(component.get());
-    }
-    std::sort(sorted.begin(), sorted.end(), [](Component* a, Component* b) { return a->name < b->name; });
-
-    for (Component* component : sorted) {
-        ImGui::PushID(component);
-        std::string label = ICON_FA_MICROCHIP "  " + component->name + (component->dirty ? " *" : "");
-        if (ImGui::Selectable(label.c_str(), component == app.current)) {
-            OpenComponent(component);
-        }
-        ImGui::SetItemTooltip("Open '%s' for editing", component->name.c_str());
-        ImGui::PopID();
-    }
-
     ImGui::End();
 }
 
@@ -156,11 +130,6 @@ static void DrawSelectedNodeProperties(Node& node) {
         }
     }
 
-    if (ImGui::Button(ICON_FA_TRASH "  Delete")) {
-        RemoveNode(component, node.id);
-        ImNodes::EditorContextSet(component.editor);
-        ImNodes::ClearNodeSelection();
-    }
 }
 
 void DrawProperties(ImVec2 position, ImVec2 size) {
@@ -218,7 +187,7 @@ void DrawProperties(ImVec2 position, ImVec2 size) {
     }
     ImGui::Text("Pins: %zu in, %zu out", PinBits(component, NodeKind::Input).size(),
                 PinBits(component, NodeKind::Output).size());
-    ImGui::Text("Parts: %d primitives, %d components", gates, parts);
+    ImGui::TextWrapped("Parts: %d primitives, %d components", gates, parts);
     ImGui::Text("Wires: %zu", component.wires.size());
 
     ImNodes::EditorContextSet(component.editor);
@@ -232,22 +201,15 @@ void DrawProperties(ImVec2 position, ImVec2 size) {
     else if (ImNodes::NumSelectedNodes() > 1) {
         Theme::SectionTitle("Selected");
         ImGui::Text("%d nodes", ImNodes::NumSelectedNodes());
-        if (ImGui::Button(ICON_FA_TRASH "  Delete")) {
-            DeleteSelection();
-        }
+        Hint("Right-click for cut, copy, duplicate and delete");
+    }
+    else {
+        Theme::SectionTitle("Selected");
+        Hint("Nothing. Click a node to see it here.");
     }
 
-    Theme::SectionTitle("How to");
-    ImGui::TextWrapped(
-        "Drag from an output pin to an input pin to wire them. Several wires into one input make a bus.\n"
-        "Pins named A0, A1, ... show as one square bus pin, and a wire between two of them carries every bit. "
-        "+ shows a bus's bits, to wire them one at a time.\n"
-        "Ctrl+click a wire end to pull it off.\n"
-        "Delete removes the selection.\n"
-        "Middle-drag pans, the mouse wheel zooms.\n"
-        "Double-click a ROM or RAM to see what it holds.\n"
-        "Input and Output nodes become this component's pins when you use it inside another one.\n\n"
-        "F5 simulate   Ctrl+S save all   Ctrl+N new");
+    ImGui::Spacing();
+    Hint(ICON_FA_KEYBOARD "  Help > Controls (F1) lists the shortcuts");
 
     ImGui::End();
 }
@@ -257,44 +219,10 @@ void DrawSimulationPanel(ImVec2 position, ImVec2 size) {
     Simulation& simulation = app.simulation;
     BeginPanel("Simulation", position, size);
 
-    ImGui::Text("Simulating '%s'", component.name.c_str());
-    if (ImGui::Button(ICON_FA_PEN_TO_SQUARE "  Back to editor (F5)", ImVec2(-1, 0))) {
-        app.mode = Mode::Edit;
-    }
-
-    Theme::SectionTitle("Clock");
-    if (ImGui::Button(simulation.running ? ICON_FA_PAUSE "  Pause (Space)" : ICON_FA_PLAY "  Run (Space)", ImVec2(-1, 0))) {
-        simulation.running = !simulation.running;
-    }
-    if (ImGui::Button(ICON_FA_FORWARD_STEP " Step one cycle")) {
-        HalfStep(simulation);
-        HalfStep(simulation);
-    }
-    ImGui::SameLine();
-    if (ImGui::Button(ICON_FA_ANGLE_RIGHT " Half step")) {
-        HalfStep(simulation);
-    }
-    ImGui::SameLine();
-    if (ImGui::Button(ICON_FA_ROTATE_LEFT " Reset")) {
-        BuildSimulation(simulation, component);
-    }
-    ImGui::SetItemTooltip("Power-cycle: flip-flops and RAM start over");
-    ImGui::SliderFloat("Hz", &simulation.frequency, 0.1f, 10000.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
-    ImGui::Checkbox("RAM powers up random", &simulation.randomRam);
-    ImGui::SetItemTooltip(
-        "As real RAM does: catches reading memory before writing it.\n"
-        "Off: RAM starts as zeros. Takes effect on Reset.");
-
-    ImGui::Text("Clock is ");
-    ImGui::SameLine(0, 0);
-    ImGui::TextColored(Theme::Vec(simulation.clock ? Theme::LEVEL_HIGH_COLOR : Theme::TEXT_DIM_COLOR),
-                       simulation.clock ? "HIGH" : "LOW");
-    ImGui::Text("Cycles: %llu", static_cast<unsigned long long>(simulation.halfCycles / 2));
-
     Theme::SectionTitle("Circuit");
     ImGui::Text("%zu gates, %d nets", simulation.gates.size(), simulation.netCount);
-    ImGui::Text("Last change settled in %d gate delays", simulation.lastSettleSteps);
-    ImGui::Text("Slowest clock edge: %d gate delays", simulation.slowestSettleSteps);
+    ImGui::TextWrapped("Last change settled in %d gate delays", simulation.lastSettleSteps);
+    ImGui::TextWrapped("Slowest clock edge: %d gate delays", simulation.slowestSettleSteps);
     if (simulation.unstable) {
         ImGui::TextColored(Theme::Vec(Theme::WARNING_COLOR), ICON_FA_TRIANGLE_EXCLAMATION " Unstable: still changing after %d gate delays\n(something oscillates)", MaxSettleSteps);
     }

@@ -29,6 +29,7 @@ constexpr ImU32 Alpha(ImU32 color, uint32_t alpha) {
 
 constexpr ImU32 BACKGROUND_COLOR = Rgb(0x111113);      // behind everything; the canvas
 constexpr ImU32 PANEL_COLOR = Rgb(0x19191c);           // windows and side panels
+constexpr ImU32 TOOLBAR_COLOR = Rgb(0x151518);         // the toolbar under the menu bar
 constexpr ImU32 SURFACE_COLOR = Rgb(0x26262a);         // frames: inputs, buttons, headers
 constexpr ImU32 SURFACE_HOVER_COLOR = Rgb(0x313136);
 constexpr ImU32 SURFACE_ACTIVE_COLOR = Rgb(0x3b3b41);
@@ -89,6 +90,10 @@ constexpr int TITLE_HOVER_LIGHTEN = 25;
 constexpr int TITLE_SELECTED_LIGHTEN = 45;
 constexpr int WIRE_HOVER_LIGHTEN = 30;
 
+// The mode chip on the toolbar.
+constexpr ImU32 CHIP_EDIT_COLOR = Rgb(0xff8a1f, 40);
+constexpr ImU32 CHIP_SIMULATE_COLOR = Rgb(0x4cc38a, 40);
+
 // The address the memory window is showing the circuit read.
 constexpr ImU32 MEMORY_CURRENT_COLOR = Rgb(0xff8a1f, 90);
 
@@ -143,9 +148,18 @@ constexpr float PIN_RADIUS = 4;
 constexpr float PIN_QUAD_SIZE = 8;
 
 // Side panels, until they are dragged wider or narrower.
-constexpr float PALETTE_WIDTH = 230;
-constexpr float PROPERTIES_WIDTH = 340;
-constexpr float SIMULATION_WIDTH = 360;
+constexpr float PROPERTIES_WIDTH = 300;
+constexpr float SIMULATION_WIDTH = 320;
+
+// The toolbar.
+constexpr ImVec2 TOOLBAR_PADDING(8, 6);
+constexpr float TOOLBAR_BUTTON_SPACING = 2;            // between buttons in a group
+constexpr float TOOLBAR_GROUP_SPACING = 8;             // either side of a separator
+constexpr float TOOLBAR_SLIDER_WIDTH = 150;
+constexpr float ICON_BUTTON_PADDING = 4;               // either side of an icon-only button's icon
+constexpr float COMPONENT_PICKER_WIDTH = 220;
+constexpr float CHIP_ROUNDING = 10;                    // the mode chip is a pill
+constexpr float ZOOM_STEP = 1.25f;                     // the toolbar's zoom buttons
 
 constexpr float SPLITTER_GRIP = 8;                     // the draggable width between panels
 constexpr float SPLITTER_LINE = 3;

@@ -50,7 +50,7 @@ void NewComponent() {
     SetStatus("Created '%s'", component->name.c_str());
 }
 
-static void SaveAllWithStatus() {
+void SaveAllWithStatus() {
     int failures = SaveAll();
     if (failures) {
         SetStatus("Couldn't save %d component(s) to %s", failures, componentsDirectory.c_str());
@@ -102,29 +102,17 @@ static void DrawMenuBar() {
         }
         ImGui::EndMenu();
     }
-    if (ImGui::BeginMenu("Mode")) {
-        if (ImGui::MenuItem(ICON_FA_PEN_TO_SQUARE "  Edit", "F5", editing)) {
-            app.mode = Mode::Edit;
-        }
-        if (ImGui::MenuItem(ICON_FA_PLAY "  Simulate", "F5", !editing) && editing) {
-            EnterSimulation();
-        }
-        ImGui::EndMenu();
-    }
-    if (ImGui::BeginMenu("View")) {
-        ImGui::MenuItem(ICON_FA_MAP "  Minimap", nullptr, &app.showMiniMap);
-        if (ImGui::MenuItem(ICON_FA_MAGNIFYING_GLASS "  Reset zoom", "Ctrl+0")) {
-            ResetZoom(*app.current);
-        }
+    if (ImGui::BeginMenu("Help")) {
+        ImGui::MenuItem(ICON_FA_KEYBOARD "  Controls", "F1", &app.showControls);
         ImGui::EndMenu();
     }
 
-    ImGui::Separator();
-    ImGui::TextColored(Theme::Vec(editing ? Theme::ACCENT_COLOR : Theme::SUCCESS_COLOR), "%s %s: %s%s",
-                       editing ? ICON_FA_PEN : ICON_FA_BOLT, editing ? "Editing" : "Simulating", app.current->name.c_str(), app.current->dirty ? " *" : "");
+    // The latest status message, against the right edge.
     if (!app.status.empty() && GetTime() < app.statusUntil) {
-        ImGui::Separator();
-        ImGui::TextUnformatted(app.status.c_str());
+        float width = ImGui::CalcTextSize(app.status.c_str()).x;
+        float right = ImGui::GetWindowContentRegionMax().x - width - ImGui::GetStyle().ItemSpacing.x;
+        ImGui::SameLine(std::max(ImGui::GetCursorPosX() + 24, right));
+        ImGui::TextDisabled("%s", app.status.c_str());
     }
     ImGui::EndMainMenuBar();
 }
@@ -163,6 +151,51 @@ static void DrawQuitDialog() {
     }
 }
 
+static void DrawControls() {
+    if (!app.showControls) {
+        return;
+    }
+    ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowSize(ImVec2(520, 0), ImGuiCond_Appearing);
+    if (!ImGui::Begin(ICON_FA_KEYBOARD "  Controls", &app.showControls, ImGuiWindowFlags_NoCollapse)) {
+        ImGui::End();
+        return;
+    }
+    static const char* const Rows[][2] = {
+        {"Add a part", "Right-click the canvas, or drag one in from the palette"},
+        {"Wire", "Drag from an output pin to an input pin"},
+        {"Bus", "Several wires into one input; pins A0, A1, ... show as one square bus pin"},
+        {"Bus bits", "+ on a bus pin shows its bits, to wire them one at a time"},
+        {"Pull a wire off", "Ctrl+click its end"},
+        {"Node actions", "Right-click a node or a wire"},
+        {"Pan", "Middle-drag"},
+        {"Zoom", "Mouse wheel; Ctrl+0 resets"},
+        {"Memory contents", "Double-click a ROM or RAM"},
+        {"Use as a part", "Input and Output nodes become this component's pins"},
+        {"Edit / simulate", "F5"},
+        {"Run / pause", "Space, while simulating"},
+        {"Cut, copy, paste", "Ctrl+X, Ctrl+C, Ctrl+V"},
+        {"Duplicate", "Ctrl+D"},
+        {"Select all", "Ctrl+A"},
+        {"Delete", "Del"},
+        {"New component", "Ctrl+N"},
+        {"Save all / Save as", "Ctrl+S, Ctrl+Shift+S"},
+    };
+    if (ImGui::BeginTable("controls", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+        ImGui::TableSetupColumn("action", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("how");
+        for (const auto& row : Rows) {
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::TextColored(Theme::Vec(Theme::ACCENT_COLOR), "%s", row[0]);
+            ImGui::TableNextColumn();
+            ImGui::TextWrapped("%s", row[1]);
+        }
+        ImGui::EndTable();
+    }
+    ImGui::End();
+}
+
 static void HandleShortcuts() {
     ImGuiIO& io = ImGui::GetIO();
     if (ImGui::IsKeyPressed(ImGuiKey_F5)) {
@@ -178,6 +211,26 @@ static void HandleShortcuts() {
     }
     if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_N, false) && app.mode == Mode::Edit) {
         NewComponent();
+    }
+    if (ImGui::IsKeyPressed(ImGuiKey_F1, false)) {
+        app.showControls = !app.showControls;
+    }
+    if (app.mode == Mode::Edit && io.KeyCtrl && !io.KeyShift && !io.WantTextInput) {
+        if (ImGui::IsKeyPressed(ImGuiKey_C, false)) {
+            CopySelection();
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_X, false)) {
+            CutSelection();
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_V, false)) {
+            Paste();
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_D, false)) {
+            DuplicateSelection();
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_A, false)) {
+            SelectAll();
+        }
     }
     if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_0, false)) {
         ResetZoom(*app.current);
@@ -208,7 +261,8 @@ static void DrawFrame() {
     float height = static_cast<float>(GetScreenHeight());
 
     DrawMenuBar();
-    float top = ImGui::GetFrameHeight();
+    DrawToolbar(ImVec2(0, ImGui::GetFrameHeight()), width);
+    float top = ImGui::GetFrameHeight() + ToolbarHeight();
     float bodyHeight = height - top;
 
     // Keep the panels a usable size and leave the canvas at least MinCanvasWidth.
@@ -218,13 +272,10 @@ static void DrawFrame() {
     };
 
     if (app.mode == Mode::Edit) {
-        clampWidth(app.paletteWidth, app.propertiesWidth);
-        clampWidth(app.propertiesWidth, app.paletteWidth);
-        float paletteWidth = app.paletteWidth, propertiesWidth = app.propertiesWidth;
-        DrawPalette(ImVec2(0, top), ImVec2(paletteWidth, bodyHeight));
-        DrawCanvas(ImVec2(paletteWidth, top), ImVec2(width - paletteWidth - propertiesWidth, bodyHeight));
+        clampWidth(app.propertiesWidth, 0);
+        float propertiesWidth = app.propertiesWidth;
+        DrawCanvas(ImVec2(0, top), ImVec2(width - propertiesWidth, bodyHeight));
         DrawProperties(ImVec2(width - propertiesWidth, top), ImVec2(propertiesWidth, bodyHeight));
-        DrawSplitter("##palette splitter", paletteWidth, top, bodyHeight, app.paletteWidth, +1);
         DrawSplitter("##properties splitter", width - propertiesWidth, top, bodyHeight, app.propertiesWidth, -1);
     }
     else {
@@ -239,6 +290,7 @@ static void DrawFrame() {
     DrawSaveAsDialog();
 
     DrawQuitDialog();
+    DrawControls();
     HandleShortcuts();
 }
 

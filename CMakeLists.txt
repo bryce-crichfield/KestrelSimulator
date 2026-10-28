@@ -137,6 +137,7 @@ add_executable(KestrelSimulator
     ${SOURCE_DIR}/FileDialog.cpp
     ${SOURCE_DIR}/EditorMemory.cpp
     ${SOURCE_DIR}/EditorPanels.cpp
+    ${SOURCE_DIR}/EditorToolbar.cpp
     ${SOURCE_DIR}/HeadlessRun.cpp
     ${SOURCE_DIR}/Main.cpp
     ${SOURCE_DIR}/SelfTest.cpp
