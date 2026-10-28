@@ -4,8 +4,10 @@
 #include "EditorInternal.h"
 
 #include "imgui_internal.h"
+#include "imnodes_internal.h"
 
 #include <algorithm>
+#include <cfloat>
 #include <cmath>
 #include <cstdio>
 #include <map>
@@ -663,6 +665,226 @@ void ResetZoom(Component& component) {
     component.zoom = 1.0f;
 }
 
+static float SnapToGrid(float value) {
+    return std::round(value / Theme::GRID_SPACING) * Theme::GRID_SPACING;
+}
+
+// A layered layout: each node one column right of the furthest node feeding it, with feedback
+// wires (a register's output back to its input) left out so they can't push columns along forever.
+// Within a column, nodes are ordered to sit level with what they connect to, which untangles wires.
+void AutoLayout(Component& component) {
+    if (component.nodes.empty() || !component.editor) {
+        return;
+    }
+    ImNodes::EditorContextSet(component.editor);
+    size_t count = component.nodes.size();
+    std::map<uint32_t, size_t> index;
+    for (size_t i = 0; i < count; i++) {
+        index[component.nodes[i].id] = i;
+    }
+    std::vector<std::vector<size_t>> next(count), previous(count);
+    for (const Wire& wire : component.wires) {
+        auto from = index.find(wire.fromNode), to = index.find(wire.toNode);
+        if (from != index.end() && to != index.end() && from->second != to->second) {
+            next[from->second].push_back(to->second);
+        }
+    }
+
+    // Depth-first from the inputs first: edges back to a node still being visited are feedback.
+    // Finishing order, reversed, is an order where every kept wire runs forward.
+    std::vector<int> state(count, 0);  // 0 unseen, 1 visiting, 2 done
+    std::vector<size_t> finished;
+    std::vector<std::vector<size_t>> forward(count);
+    auto visit = [&](size_t start) {
+        std::vector<std::pair<size_t, size_t>> stack{{start, 0}};
+        state[start] = 1;
+        while (!stack.empty()) {
+            auto& [node, edge] = stack.back();
+            if (edge < next[node].size()) {
+                size_t target = next[node][edge++];
+                if (state[target] == 0) {
+                    forward[node].push_back(target);
+                    state[target] = 1;
+                    stack.push_back({target, 0});
+                }
+                else if (state[target] == 2) {
+                    forward[node].push_back(target);
+                }
+            }
+            else {
+                state[node] = 2;
+                finished.push_back(node);
+                stack.pop_back();
+            }
+        }
+    };
+    for (size_t i = 0; i < count; i++) {
+        if (component.nodes[i].kind == NodeKind::Input && state[i] == 0) {
+            visit(i);
+        }
+    }
+    for (size_t i = 0; i < count; i++) {
+        if (state[i] == 0) {
+            visit(i);
+        }
+    }
+
+    std::vector<int> layer(count, 0);
+    for (auto it = finished.rbegin(); it != finished.rend(); ++it) {
+        for (size_t target : forward[*it]) {
+            layer[target] = std::max(layer[target], layer[*it] + 1);
+            previous[target].push_back(*it);
+        }
+    }
+    int lastLayer = *std::max_element(layer.begin(), layer.end());
+    for (size_t i = 0; i < count; i++) {
+        if (component.nodes[i].kind == NodeKind::Input) {
+            layer[i] = 0;
+        }
+        else if (component.nodes[i].kind == NodeKind::Output) {
+            layer[i] = std::max(lastLayer, 1);  // outputs line up on the right
+        }
+    }
+    lastLayer = *std::max_element(layer.begin(), layer.end());
+
+    // Columns, first in their current order top to bottom, then sorted by where their neighbours are.
+    std::vector<std::vector<size_t>> columns(static_cast<size_t>(lastLayer) + 1);
+    for (size_t i = 0; i < count; i++) {
+        columns[static_cast<size_t>(layer[i])].push_back(i);
+    }
+    std::vector<float> rank(count);
+    for (auto& column : columns) {
+        std::sort(column.begin(), column.end(),
+                  [&](size_t a, size_t b) { return component.nodes[a].position.y < component.nodes[b].position.y; });
+        for (size_t row = 0; row < column.size(); row++) {
+            rank[column[row]] = static_cast<float>(row);
+        }
+    }
+    auto sortColumn = [&](std::vector<size_t>& column, bool byPrevious) {
+        std::vector<float> key(count);
+        for (size_t node : column) {
+            const auto& neighbours = byPrevious ? previous[node] : forward[node];
+            float sum = 0;
+            for (size_t neighbour : neighbours) {
+                sum += rank[neighbour];
+            }
+            key[node] = neighbours.empty() ? rank[node] : sum / static_cast<float>(neighbours.size());
+        }
+        std::stable_sort(column.begin(), column.end(), [&](size_t a, size_t b) { return key[a] < key[b]; });
+        for (size_t row = 0; row < column.size(); row++) {
+            rank[column[row]] = static_cast<float>(row);
+        }
+    };
+    for (int sweep = 0; sweep < 4; sweep++) {
+        for (size_t c = 1; c < columns.size(); c++) {
+            sortColumn(columns[c], true);
+        }
+        for (size_t c = columns.size() - 1; c-- > 0;) {
+            sortColumn(columns[c], false);
+        }
+    }
+
+    // Place the columns, each centred on the tallest, at the top left of where the nodes were.
+    float zoom = component.zoom;
+    ImVec2 origin(FLT_MAX, FLT_MAX);
+    std::vector<ImVec2> size(count);
+    for (size_t i = 0; i < count; i++) {
+        ImVec2 dimensions = ImNodes::GetNodeDimensions(static_cast<int>(component.nodes[i].id));
+        size[i] = ImVec2(dimensions.x / zoom, dimensions.y / zoom);
+        origin.x = std::min(origin.x, component.nodes[i].position.x);
+        origin.y = std::min(origin.y, component.nodes[i].position.y);
+    }
+    const float columnGap = Theme::GRID_SPACING * 4, rowGap = Theme::GRID_SPACING;
+    std::vector<float> heights;
+    float tallest = 0;
+    for (const auto& column : columns) {
+        float height = 0;
+        for (size_t node : column) {
+            height += size[node].y + rowGap;
+        }
+        heights.push_back(height);
+        tallest = std::max(tallest, height);
+    }
+    float x = SnapToGrid(origin.x);
+    for (size_t c = 0; c < columns.size(); c++) {
+        float width = 0;
+        float y = SnapToGrid(origin.y + (tallest - heights[c]) * 0.5f);
+        for (size_t node : columns[c]) {
+            Node& placed = component.nodes[node];
+            placed.position = ImVec2(x, y);
+            placed.placement = Node::Placement::Grid;
+            y = SnapToGrid(y + size[node].y + rowGap + Theme::GRID_SPACING * 0.49f);
+            width = std::max(width, size[node].x);
+        }
+        if (!columns[c].empty()) {
+            x = SnapToGrid(x + width + columnGap + Theme::GRID_SPACING * 0.49f);
+        }
+    }
+    component.dirty = true;
+    SetStatus("Laid out %zu nodes", count);
+}
+
+// Labels in place of wires: each pin names what it's wired to, in a tag beside it.
+static void DrawWireLabels(const Component& component, ImVec2 position, ImVec2 size) {
+    ImNodesEditorContext& editor = ImNodes::EditorContextGet();
+    struct Tag {
+        std::vector<std::string> names;
+        ImU32 color;
+    };
+    std::map<std::pair<int, bool>, Tag> tags;  // attribute, output
+    bool simulating = app.mode == Mode::Simulate;
+    for (const Wire& wire : component.wires) {
+        const Node* from = component.FindNode(wire.fromNode);
+        const Node* to = component.FindNode(wire.toNode);
+        if (!from || !to) {
+            continue;
+        }
+        int width = static_cast<int>(wire.width);
+        ImU32 color = Theme::TEXT_COLOR;
+        if (simulating) {
+            color = LevelColor(BusLevel(app.simulation, PinNets(app.simulation, wire.fromNode, true,
+                                                                static_cast<int>(wire.fromPin), width)));
+        }
+        Tag& out = tags[{WireEndAttribute(component, *from, true, static_cast<int>(wire.fromPin), width), true}];
+        out.names.push_back(EndpointText(*to, false, static_cast<int>(wire.toPin), width));
+        out.color = color;
+        Tag& in = tags[{WireEndAttribute(component, *to, false, static_cast<int>(wire.toPin), width), false}];
+        in.names.push_back(EndpointText(*from, true, static_cast<int>(wire.fromPin), width));
+        in.color = color;
+    }
+
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+    drawList->PushClipRect(position, ImVec2(position.x + size.x, position.y + size.y), true);
+    ImFont* font = ImGui::GetFont();
+    // Tags grow more slowly than the canvas when zooming in, so they don't swamp the nodes.
+    float tagZoom = std::min(std::sqrt(component.zoom), component.zoom);
+    float fontSize = ImGui::GetFontSize() / component.zoom * tagZoom * Theme::WIRE_LABEL_SCALE;
+    float padding = 4 * tagZoom, gap = 10 * component.zoom;
+    for (const auto& [key, tag] : tags) {
+        int pin = ImNodes::ObjectPoolFind(editor.Pins, key.first);
+        if (pin < 0) {
+            continue;
+        }
+        std::string text;
+        for (size_t i = 0; i < tag.names.size() && i < 3; i++) {
+            text += (i ? ", " : "") + tag.names[i];
+        }
+        if (tag.names.size() > 3) {
+            text += " +" + std::to_string(tag.names.size() - 3);
+        }
+        text = key.second ? ICON_FA_ARROW_RIGHT " " + text : text + " " ICON_FA_ARROW_RIGHT;
+        ImVec2 anchor = editor.Pins.Pool[pin].Pos;
+        ImVec2 textSize = font->CalcTextSizeA(fontSize, FLT_MAX, 0, text.c_str());
+        float left = key.second ? anchor.x + gap : anchor.x - gap - textSize.x - padding * 2;
+        ImVec2 corner(left, anchor.y - textSize.y * 0.5f - padding * 0.5f);
+        ImVec2 end(left + textSize.x + padding * 2, anchor.y + textSize.y * 0.5f + padding * 0.5f);
+        drawList->AddRectFilled(corner, end, Theme::WIRE_LABEL_BACKGROUND_COLOR, Theme::CHIP_ROUNDING * tagZoom);
+        drawList->AddRect(corner, end, Theme::Alpha(tag.color, 120), Theme::CHIP_ROUNDING * tagZoom);
+        drawList->AddText(font, fontSize, ImVec2(left + padding, anchor.y - textSize.y * 0.5f), tag.color, text.c_str());
+    }
+    drawList->PopClipRect();
+}
+
 // The Edit actions as menu items; the canvas's right-click menus and the Edit menu share them.
 void DrawEditMenuItems(bool withPaste) {
     bool selection = HasSelection();
@@ -784,6 +1006,13 @@ void DrawCanvas(ImVec2 position, ImVec2 size) {
     }
     float zoom = component.zoom;
     ScaleNodeStyle(zoom);
+    // Dragged nodes jump from grid line to grid line; the spacing is the zoomed one, so it matches the drawn grid.
+    if (app.snapToGrid && editing) {
+        ImNodes::GetStyle().Flags |= ImNodesStyleFlags_GridSnapping;
+    }
+    else {
+        ImNodes::GetStyle().Flags &= ~ImNodesStyleFlags_GridSnapping;
+    }
     ImGui::PushFont(nullptr, ImGui::GetStyle().FontSizeBase * zoom);
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(Theme::CANVAS_ITEM_SPACING.x * zoom, Theme::CANVAS_ITEM_SPACING.y * zoom));
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(Theme::CANVAS_FRAME_PADDING.x * zoom, Theme::CANVAS_FRAME_PADDING.y * zoom));
@@ -797,7 +1026,7 @@ void DrawCanvas(ImVec2 position, ImVec2 size) {
     for (const Wire& wire : component.wires) {
         const Node* from = component.FindNode(wire.fromNode);
         const Node* to = component.FindNode(wire.toNode);
-        if (!from || !to) {
+        if (!from || !to || app.wireLabels) {
             continue;
         }
         int width = static_cast<int>(wire.width);
@@ -827,6 +1056,9 @@ void DrawCanvas(ImVec2 position, ImVec2 size) {
         ImNodes::MiniMap(0.15f, ImNodesMiniMapLocation_BottomRight);
     }
     ImNodes::EndNodeEditor();
+    if (app.wireLabels) {
+        DrawWireLabels(component, position, size);
+    }
     ImGui::PopStyleVar(2);
     ImGui::PopFont();
     ScaleNodeStyle(1.0f);
@@ -847,6 +1079,17 @@ void DrawCanvas(ImVec2 position, ImVec2 size) {
         if (std::fabs(now.x - node.position.x) > 0.5f || std::fabs(now.y - node.position.y) > 0.5f) {
             node.position = now;
             component.dirty = true;
+        }
+        // Once let go, a dragged (so selected) node settles onto the grid lines. Others stay put, so
+        // opening a component doesn't change it.
+        if (app.snapToGrid && editing && !ImGui::IsMouseDown(ImGuiMouseButton_Left) &&
+            ImNodes::IsNodeSelected(static_cast<int>(node.id))) {
+            ImVec2 snapped(SnapToGrid(node.position.x), SnapToGrid(node.position.y));
+            if (snapped.x != node.position.x || snapped.y != node.position.y) {
+                node.position = snapped;
+                node.placement = Node::Placement::Grid;
+                component.dirty = true;
+            }
         }
     }
 

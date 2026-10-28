@@ -184,6 +184,14 @@ static void DrawEditTools() {
         DrawAddNodeMenu(ImVec2(0, 0), true);
         ImGui::EndPopup();
     }
+    Separator();
+    if (IconButton(ICON_FA_BORDER_ALL, "Snap to grid (G)", app.snapToGrid)) {
+        app.snapToGrid = !app.snapToGrid;
+    }
+    if (IconButton(ICON_FA_SITEMAP, "Auto layout: inputs on the left, outputs on the right (L)", false,
+                   !app.current->nodes.empty())) {
+        AutoLayout(*app.current);
+    }
 }
 
 static void DrawSimulationTools() {
@@ -237,7 +245,7 @@ static void DrawViewTools() {
     float zoomWidth = ImGui::CalcTextSize("300%").x + style.FramePadding.x * 2;
     const char* chip = app.mode == Mode::Edit ? ICON_FA_PEN "  EDITING" : ICON_FA_BOLT "  SIMULATING";
     float width = ChipWidth(chip) + IconButtonWidth(ICON_FA_MAGNIFYING_GLASS_MINUS) + IconButtonWidth(ICON_FA_MAGNIFYING_GLASS_PLUS) +
-                  IconButtonWidth(ICON_FA_MAP) + zoomWidth + Theme::TOOLBAR_BUTTON_SPACING * 3 +
+                  IconButtonWidth(ICON_FA_MAP) + IconButtonWidth(ICON_FA_TAGS) + zoomWidth + Theme::TOOLBAR_BUTTON_SPACING * 4 +
                   Theme::TOOLBAR_GROUP_SPACING * 4 + 2;
     float right = ImGui::GetWindowContentRegionMax().x - width;
     ImGui::SameLine(0, 0);
@@ -264,6 +272,11 @@ static void DrawViewTools() {
         ZoomBy(component, Theme::ZOOM_STEP);
     }
     Separator();
+    if (IconButton(ICON_FA_TAGS, app.wireLabels ? "Showing labels: each pin names what it connects to. Click for wires (W)"
+                                                 : "Showing wires. Click to label pins instead (W)",
+                   app.wireLabels)) {
+        app.wireLabels = !app.wireLabels;
+    }
     if (IconButton(ICON_FA_MAP, "Minimap", app.showMiniMap)) {
         app.showMiniMap = !app.showMiniMap;
     }

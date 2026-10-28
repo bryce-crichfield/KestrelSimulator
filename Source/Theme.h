@@ -144,6 +144,8 @@ constexpr float NODE_BORDER = 1;
 constexpr float GRID_SPACING = 24;
 constexpr float LINK_THICKNESS = 3;
 constexpr float BUS_THICKNESS_SCALE = 2.5f;            // a bus wire is this much thicker than a single one
+constexpr float WIRE_LABEL_SCALE = 0.85f;              // wire-label tags' text, against the canvas font
+constexpr ImU32 WIRE_LABEL_BACKGROUND_COLOR = Rgb(0x1c1c20, 230);
 constexpr float PIN_RADIUS = 4;
 constexpr float PIN_QUAD_SIZE = 8;
 

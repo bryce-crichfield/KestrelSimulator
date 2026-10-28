@@ -170,6 +170,9 @@ static void DrawControls() {
         {"Node actions", "Right-click a node or a wire"},
         {"Pan", "Middle-drag"},
         {"Zoom", "Mouse wheel; Ctrl+0 resets"},
+        {"Snap to grid", "G toggles"},
+        {"Auto layout", "L"},
+        {"Wires / labels", "W switches"},
         {"Memory contents", "Double-click a ROM or RAM"},
         {"Use as a part", "Input and Output nodes become this component's pins"},
         {"Edit / simulate", "F5"},
@@ -234,6 +237,17 @@ static void HandleShortcuts() {
     }
     if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_0, false)) {
         ResetZoom(*app.current);
+    }
+    if (!io.KeyCtrl && !io.WantTextInput) {
+        if (ImGui::IsKeyPressed(ImGuiKey_W, false)) {
+            app.wireLabels = !app.wireLabels;
+        }
+        if (app.mode == Mode::Edit && ImGui::IsKeyPressed(ImGuiKey_G, false)) {
+            app.snapToGrid = !app.snapToGrid;
+        }
+        if (app.mode == Mode::Edit && ImGui::IsKeyPressed(ImGuiKey_L, false)) {
+            AutoLayout(*app.current);
+        }
     }
     if (app.mode == Mode::Simulate && !io.WantTextInput && ImGui::IsKeyPressed(ImGuiKey_Space, false)) {
         app.simulation.running = !app.simulation.running;

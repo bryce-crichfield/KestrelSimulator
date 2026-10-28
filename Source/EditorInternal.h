@@ -55,6 +55,8 @@ struct App {
     int hoveredNode = -1;
     int contextNode = -1;  // the node right-clicked
     bool showMiniMap = true;
+    bool snapToGrid = true;   // dropped nodes land on the drawn grid
+    bool wireLabels = false;  // pins name what they connect to, instead of wires being drawn
     bool showControls = false;  // Help > Controls
     Clipboard clipboard;
     int pasteCount = 0;                     // pastes since the last copy, each further along
@@ -136,6 +138,7 @@ void DuplicateSelection();
 void SelectAll();
 void ResetZoom(Component& component);
 void ZoomBy(Component& component, float factor);  // about the middle of the canvas
+void AutoLayout(Component& component);             // in columns by depth from the inputs, on the grid
 void DrawCanvas(ImVec2 position, ImVec2 size);
 
 // EditorToolbar.cpp
